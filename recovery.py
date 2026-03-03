@@ -2,6 +2,8 @@
 Crash recovery — checkpoint/resume support.
 Saves progress after each batch so processing can resume after failure.
 """
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime

@@ -2,6 +2,8 @@
 Backup and restore functionality for Google Contacts.
 Creates timestamped full JSON backups and verifies integrity.
 """
+from __future__ import annotations
+
 import json
 import sys
 from datetime import datetime

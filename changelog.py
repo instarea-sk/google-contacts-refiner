@@ -3,6 +3,8 @@ Append-only JSONL changelog for tracking all changes.
 Each line is a JSON object describing one field change.
 Used for rollback and audit.
 """
+from __future__ import annotations
+
 import json
 from datetime import datetime
 from pathlib import Path
