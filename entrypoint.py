@@ -6,6 +6,7 @@ Runs the full pipeline: backup → analyze → fix (auto mode).
 Replaces run.sh for cloud deployments.
 """
 import logging
+import os
 import sys
 import traceback
 from datetime import datetime
@@ -45,10 +46,11 @@ def run():
         sys.exit(1)
 
     # Step 3: Auto-fix (high confidence only)
-    logger.info("Step 3/3: Auto-fix")
+    dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
+    logger.info(f"Step 3/3: Auto-fix {'(DRY RUN)' if dry_run else ''}")
     try:
         from main import cmd_fix
-        cmd_fix(auto_mode=True, confidence_threshold=0.90)
+        cmd_fix(auto_mode=True, confidence_threshold=0.90, dry_run=dry_run)
     except Exception as e:
         logger.error(f"Auto-fix failed: {e}")
         traceback.print_exc()
