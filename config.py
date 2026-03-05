@@ -77,6 +77,7 @@ AUTO_MAX_CHANGES_PER_RUN = 200         # Safety limit for auto-mode
 
 # ── AI Review (Phase 2) ──────────────────────────────────────────────
 AI_REVIEW_CHECKPOINT = DATA_DIR / "ai_review_checkpoint.json"
+AI_REVIEW_HISTORY = DATA_DIR / "ai_review_history.json"
 
 # ── Phone Number Defaults ──────────────────────────────────────────────────
 DEFAULT_REGION = "SK"

@@ -16,13 +16,14 @@ import os
 import sys
 import json
 import uuid
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import DATA_DIR, AI_REVIEW_CHECKPOINT, AI_MAX_CONTACTS_PER_BATCH
+from config import DATA_DIR, AI_REVIEW_CHECKPOINT, AI_REVIEW_HISTORY, AI_MAX_CONTACTS_PER_BATCH
 from auth import authenticate, test_connection
 from memory import MemoryManager
 from api_client import PeopleAPIClient
@@ -319,8 +320,25 @@ def cmd_ai_review(resume=False):
         for c in backup_data["contacts"]
     }
 
+    # Load AI review history (skip contacts already reviewed with same changes)
+    ai_history = {}
+    if AI_REVIEW_HISTORY.exists():
+        try:
+            ai_history = json.loads(AI_REVIEW_HISTORY.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            ai_history = {}
+
+    def _changes_hash(changes: list[dict]) -> str:
+        """Stable hash of changes for dedup across runs."""
+        key = json.dumps(
+            sorted([{k: c[k] for k in ("field", "old", "new") if k in c} for c in changes],
+                   key=lambda x: x.get("field", "")),
+            sort_keys=True, ensure_ascii=False,
+        )
+        return hashlib.sha256(key.encode()).hexdigest()[:16]
+
     # Collect contacts with MEDIUM confidence changes
-    medium_items = []  # (batch_idx, contact_idx, resourceName, changes)
+    all_medium_items = []  # (batch_idx, contact_idx, resourceName, changes)
     for bi, batch in enumerate(workplan["batches"]):
         for ci, contact in enumerate(batch["contacts"]):
             medium_changes = [
@@ -328,9 +346,23 @@ def cmd_ai_review(resume=False):
                 if 0.60 <= ch.get("confidence", 0) < 0.90
             ]
             if medium_changes:
-                medium_items.append((bi, ci, contact["resourceName"], medium_changes))
+                all_medium_items.append((bi, ci, contact["resourceName"], medium_changes))
 
-    print(f"Kontakty s MEDIUM zmenami: {len(medium_items)}")
+    # Filter out already-reviewed contacts (same changes hash)
+    medium_items = []
+    skipped_from_history = 0
+    for item in all_medium_items:
+        bi, ci, rn, changes = item
+        h = _changes_hash(changes)
+        if ai_history.get(rn) == h:
+            skipped_from_history += 1
+        else:
+            medium_items.append(item)
+
+    print(f"Kontakty s MEDIUM zmenami: {len(all_medium_items)}")
+    if skipped_from_history:
+        print(f"   Preskočené (už reviewed): {skipped_from_history}")
+    print(f"   Na review: {len(medium_items)}")
 
     if not medium_items:
         print("ℹ️  Žiadne MEDIUM zmeny na AI review.")
@@ -398,6 +430,9 @@ def cmd_ai_review(resume=False):
                     "total": len(all_ch),
                 }
 
+                # Record in history so next run skips this contact
+                ai_history[rn] = _changes_hash(orig_changes)
+
         end_idx = min(i + AI_MAX_CONTACTS_PER_BATCH, total)
         print(f"   AI reviewed: {end_idx}/{total}")
 
@@ -405,7 +440,7 @@ def cmd_ai_review(resume=False):
         with open(workplan_path, "w", encoding="utf-8") as f:
             json.dump(workplan, f, ensure_ascii=False, indent=2)
 
-        # Save checkpoint
+        # Save checkpoint and history incrementally
         AI_REVIEW_CHECKPOINT.write_text(json.dumps({
             "status": "in_progress",
             "workplan_path": str(workplan_path),
@@ -414,6 +449,9 @@ def cmd_ai_review(resume=False):
             "promoted": promoted,
             "demoted": demoted,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
+        AI_REVIEW_HISTORY.write_text(
+            json.dumps(ai_history, ensure_ascii=False), encoding="utf-8"
+        )
 
     # Print AI stats
     stats = ai.get_usage_stats()
