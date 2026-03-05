@@ -401,6 +401,10 @@ def cmd_ai_review(resume=False):
         end_idx = min(i + AI_MAX_CONTACTS_PER_BATCH, total)
         print(f"   AI reviewed: {end_idx}/{total}")
 
+        # Save workplan incrementally (so timeout doesn't lose results)
+        with open(workplan_path, "w", encoding="utf-8") as f:
+            json.dump(workplan, f, ensure_ascii=False, indent=2)
+
         # Save checkpoint
         AI_REVIEW_CHECKPOINT.write_text(json.dumps({
             "status": "in_progress",
@@ -410,10 +414,6 @@ def cmd_ai_review(resume=False):
             "promoted": promoted,
             "demoted": demoted,
         }, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    # Save updated workplan (overwrite)
-    with open(workplan_path, "w", encoding="utf-8") as f:
-        json.dump(workplan, f, ensure_ascii=False, indent=2)
 
     # Print AI stats
     stats = ai.get_usage_stats()
@@ -721,6 +721,8 @@ def cmd_resume():
         recovery=recovery,
         start_from_batch=start_batch,
         memory=mem,
+        auto_mode=ENVIRONMENT == "cloud",
+        auto_confidence_threshold=0.90,
     )
 
 
