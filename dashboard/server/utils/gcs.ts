@@ -17,10 +17,15 @@ function getStorage(): Storage {
   const saKey = config.gcsServiceAccount
 
   if (saKey) {
-    const credentials = JSON.parse(saKey)
-    storage = new Storage({ credentials })
+    try {
+      const credentials = JSON.parse(saKey)
+      storage = new Storage({ credentials })
+    } catch {
+      console.warn('[GCS] Failed to parse GCS_SERVICE_ACCOUNT, falling back to ADC')
+      storage = new Storage()
+    }
   } else {
-    // Falls back to ADC (local gcloud auth or GCE metadata)
+    // Falls back to ADC or GOOGLE_APPLICATION_CREDENTIALS env var
     storage = new Storage()
   }
 
@@ -88,57 +93,51 @@ export async function getAIReviewCheckpoint(): Promise<AIReviewCheckpoint | null
   )
 }
 
-export async function getChangelog(): Promise<ChangelogEntry[]> {
-  return cachedRead('changelog', async () => {
-    const path = await findLatestFile('data/changelog_', '.jsonl')
-    if (!path) return []
-
-    try {
-      const [content] = await getBucket().file(path).download()
-      const lines = content.toString('utf-8').trim().split('\n')
-      const entries: ChangelogEntry[] = []
-
-      for (const line of lines) {
-        try {
-          const parsed = JSON.parse(line) as ChangelogLine
-          if (!('type' in parsed)) {
-            entries.push(parsed as ChangelogEntry)
-          }
-        } catch {
-          // Skip malformed lines (partial writes)
-        }
-      }
-
-      return entries
-    } catch {
-      return []
-    }
-  })
+async function findAllFiles(prefix: string, extension: string): Promise<string[]> {
+  try {
+    const [files] = await getBucket().getFiles({ prefix })
+    return files
+      .filter(f => f.name.endsWith(extension))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(f => f.name)
+  } catch {
+    return []
+  }
 }
 
-export async function getChangelogWithMarkers(): Promise<ChangelogLine[]> {
-  return cachedRead('changelog_full', async () => {
-    const path = await findLatestFile('data/changelog_', '.jsonl')
-    if (!path) return []
+async function readAllChangelogs(): Promise<ChangelogLine[]> {
+  const paths = await findAllFiles('data/changelog_', '.jsonl')
+  if (!paths.length) return []
 
+  const all: ChangelogLine[] = []
+  for (const path of paths) {
     try {
       const [content] = await getBucket().file(path).download()
-      const lines = content.toString('utf-8').trim().split('\n')
-      const entries: ChangelogLine[] = []
-
-      for (const line of lines) {
+      const text = content.toString('utf-8').trim()
+      if (!text) continue
+      for (const line of text.split('\n')) {
         try {
-          entries.push(JSON.parse(line) as ChangelogLine)
+          all.push(JSON.parse(line) as ChangelogLine)
         } catch {
           // Skip malformed lines
         }
       }
-
-      return entries
     } catch {
-      return []
+      // Skip unreadable files
     }
+  }
+  return all
+}
+
+export async function getChangelog(): Promise<ChangelogEntry[]> {
+  return cachedRead('changelog', async () => {
+    const all = await readAllChangelogs()
+    return all.filter((e): e is ChangelogEntry => !('type' in e))
   })
+}
+
+export async function getChangelogWithMarkers(): Promise<ChangelogLine[]> {
+  return cachedRead('changelog_full', readAllChangelogs)
 }
 
 export function isBatchMarker(entry: ChangelogLine): entry is BatchMarker {

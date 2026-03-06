@@ -2,13 +2,13 @@
 import type { ChangelogEntry } from '~/server/utils/types'
 
 const search = ref('')
-const fieldFilter = ref('')
-const confidenceFilter = ref('')
+const fieldFilter = ref('all')
+const confidenceFilter = ref('all')
 const page = ref(1)
 const pageSize = 50
 
 const fieldOptions = [
-  { label: 'All fields', value: '' },
+  { label: 'All fields', value: 'all' },
   { label: 'Names', value: 'names' },
   { label: 'Phones', value: 'phoneNumbers' },
   { label: 'Emails', value: 'emailAddresses' },
@@ -19,7 +19,7 @@ const fieldOptions = [
 ]
 
 const confidenceOptions = [
-  { label: 'All', value: '' },
+  { label: 'All', value: 'all' },
   { label: 'HIGH', value: 'high' },
   { label: 'MEDIUM', value: 'medium' },
   { label: 'LOW', value: 'low' },
@@ -30,8 +30,8 @@ const { data, status } = useFetch('/api/changelog', {
     page: page.value,
     pageSize,
     search: search.value,
-    field: fieldFilter.value,
-    confidence: confidenceFilter.value,
+    field: fieldFilter.value === 'all' ? '' : fieldFilter.value,
+    confidence: confidenceFilter.value === 'all' ? '' : confidenceFilter.value,
   })),
   watch: [page, search, fieldFilter, confidenceFilter],
 })
