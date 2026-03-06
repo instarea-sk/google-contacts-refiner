@@ -12,23 +12,8 @@ let storage: Storage | null = null
 
 function getStorage(): Storage {
   if (storage) return storage
-
-  const config = useRuntimeConfig()
-  const saKey = config.gcsServiceAccount
-
-  if (saKey) {
-    try {
-      const credentials = JSON.parse(saKey)
-      storage = new Storage({ credentials })
-    } catch {
-      console.warn('[GCS] Failed to parse GCS_SERVICE_ACCOUNT, falling back to ADC')
-      storage = new Storage()
-    }
-  } else {
-    // Falls back to ADC or GOOGLE_APPLICATION_CREDENTIALS env var
-    storage = new Storage()
-  }
-
+  // Auth handled by GOOGLE_APPLICATION_CREDENTIALS (set by server plugin or .env)
+  storage = new Storage()
   return storage
 }
 
