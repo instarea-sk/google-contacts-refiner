@@ -27,6 +27,7 @@ const focusedIndex = ref(0)
 // Saving state
 const isSaving = ref(false)
 const lastSaved = ref<string | null>(null)
+const exportMessage = ref<string | null>(null)
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined
 
 // Initialize session
@@ -119,6 +120,7 @@ const fieldOptions = computed(() => {
   return [
     { label: 'All fields', value: '' },
     ...Object.entries(fields)
+      .filter(([k]) => k !== '')
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => ({ label: `${formatFieldName(k)} (${v})`, value: k })),
   ]
@@ -129,6 +131,7 @@ const categoryOptions = computed(() => {
   return [
     { label: 'All rules', value: '' },
     ...Object.entries(cats)
+      .filter(([k]) => k !== '')
       .sort((a, b) => b[1] - a[1])
       .map(([k, v]) => ({ label: `${k} (${v})`, value: k })),
   ]
@@ -264,7 +267,7 @@ async function exportDecisions() {
       method: 'POST',
       body: { sessionId: sessionId.value },
     })
-    alert(`Exported ${result.exported} approved/edited decisions for pipeline processing.`)
+    exportMessage.value = `Exported ${result.exported} approved/edited decisions for pipeline processing.`
   } catch (err) {
     console.error('Export failed:', err)
   }
@@ -360,7 +363,10 @@ const progressPercent = computed(() => {
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <span v-if="lastSaved" class="text-xs text-neutral-600">
+        <span v-if="exportMessage" class="text-xs text-green-400">
+          {{ exportMessage }}
+        </span>
+        <span v-else-if="lastSaved" class="text-xs text-neutral-600">
           Saved {{ lastSaved }}
         </span>
         <UButton
