@@ -215,12 +215,13 @@ export async function getLatestReviewSession(): Promise<ReviewSession | null> {
   return readJson<ReviewSession>(path)
 }
 
-export async function saveReviewDecisions(sessionId: string, decisions: Record<string, unknown>): Promise<void> {
+export async function saveReviewDecisions(sessionId: string, changes: Array<Record<string, unknown>>, reviewFilePath: string | null): Promise<void> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
   await writeJson(`data/review_decisions_${timestamp}.json`, {
     sessionId,
     exportedAt: new Date().toISOString(),
-    decisions,
+    reviewFilePath,
+    changes,
   })
 }
 

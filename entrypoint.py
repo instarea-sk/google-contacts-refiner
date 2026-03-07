@@ -30,13 +30,15 @@ def _process_review_feedback():
     """
     Phase 0: Process review decisions from the dashboard.
 
-    Reads review_decisions_*.json files from GCS, applies approved changes
-    via People API, feeds all decisions into memory for learning, and
-    archives processed files.
+    Reads review_decisions_*.json files from GCS, applies approved/edited
+    changes via People API, feeds all decisions into memory for learning,
+    and archives processed files.
     """
     import glob as glob_module
     import json
     import shutil
+    from collections import defaultdict
+    from pathlib import Path
 
     from config import DATA_DIR
     from memory import MemoryManager
@@ -53,29 +55,44 @@ def _process_review_feedback():
 
     memory = MemoryManager()
     feedback_entries = []
+    # Collect approved/edited changes grouped by resourceName
+    changes_by_contact: dict[str, list[dict]] = defaultdict(list)
 
     for filepath in decision_files:
         try:
             with open(filepath, encoding="utf-8") as f:
                 data = json.load(f)
 
-            decisions = data.get("decisions", {})
-            logger.info(f"Phase 0: {filepath} — {len(decisions)} decisions")
+            # New enriched format: list of change objects in "changes" key
+            changes_list = data.get("changes", [])
+            logger.info(f"Phase 0: {filepath} — {len(changes_list)} actionable changes")
 
-            # Collect feedback for memory learning
-            for _change_id, decision in decisions.items():
-                dtype = decision.get("decision", "")
-                if dtype in ("approved", "rejected", "edited"):
+            for change in changes_list:
+                decision = change.get("decision", "")
+                resource_name = change.get("resourceName")
+
+                # Collect feedback for memory learning
+                if decision in ("approved", "edited"):
                     feedback_entries.append({
-                        "type": "approval" if dtype == "approved" else
-                               "rejection" if dtype == "rejected" else "edit",
-                        "ruleCategory": decision.get("ruleCategory", "other"),
-                        "field": decision.get("field", ""),
-                        "old": decision.get("old", ""),
-                        "suggested": decision.get("suggested", ""),
-                        "finalValue": decision.get("editedValue", decision.get("suggested", "")),
-                        "confidence": decision.get("confidence", 0),
+                        "type": "approval" if decision == "approved" else "edit",
+                        "ruleCategory": change.get("reason", "other"),
+                        "field": change.get("field", ""),
+                        "old": change.get("old", ""),
+                        "suggested": change.get("new", ""),
+                        "finalValue": change.get("editedValue") or change.get("new", ""),
+                        "confidence": change.get("confidence", 0),
                     })
+
+                    # Collect for API application
+                    if resource_name and change.get("field"):
+                        new_value = change.get("editedValue") or change.get("new", "")
+                        changes_by_contact[resource_name].append({
+                            "field": change["field"],
+                            "old": change.get("old", ""),
+                            "new": new_value,
+                            "confidence": change.get("confidence", 0.65),
+                            "reason": f"review:{change.get('reason', '')}",
+                        })
 
             # Archive processed file (move to archive/ subdirectory)
             archive_dir = DATA_DIR / "archive"
@@ -92,6 +109,68 @@ def _process_review_feedback():
         memory.process_review_feedback(feedback_entries)
         memory.save()
         logger.info(f"Phase 0: Processed {len(feedback_entries)} feedback entries into memory")
+
+    # Apply approved/edited changes via People API
+    if changes_by_contact:
+        _apply_review_changes(changes_by_contact)
+
+
+def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
+    """Apply approved review changes to contacts via People API."""
+    import uuid
+
+    from auth import authenticate
+    from api_client import PeopleAPIClient
+    from batch_processor import build_update_body
+    from changelog import ChangeLog
+    from utils import get_etag
+
+    creds = authenticate()
+    client = PeopleAPIClient(creds)
+    session_id = f"review_{uuid.uuid4().hex[:8]}"
+    changelog = ChangeLog(session_id)
+
+    total_contacts = len(changes_by_contact)
+    applied = 0
+    failed = 0
+
+    logger.info(f"Phase 0: Applying review changes to {total_contacts} contacts")
+    changelog.log_batch_start(0, total_contacts)
+
+    for resource_name, changes in changes_by_contact.items():
+        try:
+            # Fetch fresh contact data for current etag
+            person = client.get_contact(resource_name)
+            etag = get_etag(person)
+
+            # Build update payload
+            update_body = build_update_body(person, changes)
+            if not update_body:
+                logger.warning(f"Phase 0: No valid update body for {resource_name}")
+                continue
+
+            # Apply update
+            client.update_contact(resource_name, etag, update_body)
+
+            # Log each change
+            for change in changes:
+                changelog.log_change(
+                    resource_name=resource_name,
+                    field=change["field"],
+                    old_value=change["old"],
+                    new_value=change["new"],
+                    reason=change["reason"],
+                    confidence=change["confidence"],
+                    batch=0,
+                )
+            applied += 1
+
+        except Exception as e:
+            logger.error(f"Phase 0: Failed to update {resource_name}: {e}")
+            failed += 1
+
+    changelog.log_batch_end(0, applied, failed)
+    logger.info(f"Phase 0: Applied review changes — {applied} ok, {failed} failed")
 
 
 def run():

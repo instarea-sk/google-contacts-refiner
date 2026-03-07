@@ -17,7 +17,11 @@ const hideDecided = ref(false)
 // View mode
 const viewMode = ref<'contact' | 'rule'>('contact')
 
-// Focused contact index
+// Pagination
+const PAGE_SIZE = 30
+const currentPage = ref(0)
+
+// Focused contact index (relative to current page)
 const focusedIndex = ref(0)
 
 // Saving state
@@ -67,7 +71,7 @@ const filteredChanges = computed(() => {
   return changes
 })
 
-// Group by contact
+// Group by contact (all groups — for stats)
 const contactGroups = computed(() => {
   const map = new Map<string, { displayName: string; resourceName: string; changes: ReviewChange[] }>()
   for (const c of filteredChanges.value) {
@@ -79,6 +83,20 @@ const contactGroups = computed(() => {
     group.changes.push(c)
   }
   return [...map.values()]
+})
+
+// Paginated contact groups — only render this subset
+const totalPages = computed(() => Math.max(1, Math.ceil(contactGroups.value.length / PAGE_SIZE)))
+
+const paginatedGroups = computed(() => {
+  const start = currentPage.value * PAGE_SIZE
+  return contactGroups.value.slice(start, start + PAGE_SIZE)
+})
+
+// Reset page when filters change
+watch([fieldFilter, categoryFilter, hideDecided], () => {
+  currentPage.value = 0
+  focusedIndex.value = 0
 })
 
 // Group by rule category
@@ -116,10 +134,6 @@ const categoryOptions = computed(() => {
   ]
 })
 
-// Editing state
-const editingId = ref<string | null>(null)
-const editValue = ref('')
-
 function formatFieldName(field: string): string {
   return field
     .replace('phoneNumbers', 'phones')
@@ -127,16 +141,6 @@ function formatFieldName(field: string): string {
     .replace('names', 'names')
     .replace('organizations', 'orgs')
     .replace('addresses', 'addr')
-}
-
-function formatField(field: string): string {
-  return field
-    .replace('phoneNumbers', 'phones')
-    .replace('emailAddresses', 'emails')
-    .replace('.value', '')
-    .replace('.givenName', '.given')
-    .replace('.familyName', '.family')
-    .replace('.formattedValue', '')
 }
 
 function decide(changeId: string, decision: ReviewDecision['decision'], editedValue?: string) {
@@ -149,10 +153,6 @@ function decide(changeId: string, decision: ReviewDecision['decision'], editedVa
   recomputeStats()
   saveToLocalStorage()
   scheduleAutoSave()
-
-  if (editingId.value === changeId) {
-    editingId.value = null
-  }
 }
 
 function decideAllForContact(resourceName: string, decision: 'approved' | 'rejected') {
@@ -167,6 +167,12 @@ function decideAllForContact(resourceName: string, decision: 'approved' | 'rejec
   recomputeStats()
   saveToLocalStorage()
   scheduleAutoSave()
+}
+
+function undoDecision(changeId: string) {
+  delete decisions.value[changeId]
+  recomputeStats()
+  saveToLocalStorage()
 }
 
 function bulkDecide(decision: 'approved' | 'rejected') {
@@ -184,17 +190,14 @@ function bulkDecide(decision: 'approved' | 'rejected') {
   scheduleAutoSave()
 }
 
-function startEdit(change: ReviewChange) {
-  editingId.value = change.id
-  editValue.value = change.new
-  nextTick(() => {
-    const el = document.getElementById(`edit-${change.id}`)
-    el?.focus()
-  })
-}
-
-function submitEdit(changeId: string) {
-  decide(changeId, 'edited', editValue.value)
+function decisionColor(decision?: string) {
+  switch (decision) {
+    case 'approved': return 'success'
+    case 'rejected': return 'error'
+    case 'edited': return 'warning'
+    case 'skipped': return 'neutral'
+    default: return undefined
+  }
 }
 
 function recomputeStats() {
@@ -267,26 +270,11 @@ async function exportDecisions() {
   }
 }
 
-function getDecision(changeId: string): ReviewDecision | undefined {
-  return decisions.value[changeId]
-}
-
-function decisionColor(decision?: string) {
-  switch (decision) {
-    case 'approved': return 'success'
-    case 'rejected': return 'error'
-    case 'edited': return 'warning'
-    case 'skipped': return 'neutral'
-    default: return undefined
-  }
-}
-
 // Keyboard shortcuts
 function handleKeydown(e: KeyboardEvent) {
-  if (editingId.value) return // Don't intercept when editing
   if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
-  const group = contactGroups.value[focusedIndex.value]
+  const group = paginatedGroups.value[focusedIndex.value]
   if (!group) return
 
   const undecidedChanges = group.changes.filter(c => !decisions.value[c.id])
@@ -295,11 +283,21 @@ function handleKeydown(e: KeyboardEvent) {
   switch (e.key) {
     case 'j':
       e.preventDefault()
-      focusedIndex.value = Math.min(focusedIndex.value + 1, contactGroups.value.length - 1)
+      if (focusedIndex.value < paginatedGroups.value.length - 1) {
+        focusedIndex.value++
+      } else if (currentPage.value < totalPages.value - 1) {
+        currentPage.value++
+        focusedIndex.value = 0
+      }
       break
     case 'k':
       e.preventDefault()
-      focusedIndex.value = Math.max(focusedIndex.value - 1, 0)
+      if (focusedIndex.value > 0) {
+        focusedIndex.value--
+      } else if (currentPage.value > 0) {
+        currentPage.value--
+        focusedIndex.value = PAGE_SIZE - 1
+      }
       break
     case 'a':
       e.preventDefault()
@@ -315,7 +313,7 @@ function handleKeydown(e: KeyboardEvent) {
       break
     case 'e':
       e.preventDefault()
-      if (firstUndecided) startEdit(allChanges.value.find(c => c.id === firstUndecided.id)!)
+      // Edit is handled inside ReviewContactCard component
       break
     case 'A':
       e.preventDefault()
@@ -341,10 +339,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
-})
-
-const undecidedCount = computed(() => {
-  return allChanges.value.filter(c => !decisions.value[c.id]).length
 })
 
 const progressPercent = computed(() => {
@@ -477,96 +471,40 @@ const progressPercent = computed(() => {
         </div>
       </div>
 
-      <!-- Contact View -->
+      <!-- Contact View (paginated) -->
       <div v-if="viewMode === 'contact'" class="space-y-3">
-        <div
-          v-for="(group, idx) in contactGroups"
+        <ReviewContactCard
+          v-for="(group, idx) in paginatedGroups"
           :key="group.resourceName"
-          class="rounded-xl border transition-colors"
-          :class="idx === focusedIndex
-            ? 'border-primary-500/50 bg-neutral-900/80'
-            : 'border-neutral-800 bg-neutral-900/30'"
-          @click="focusedIndex = idx"
-        >
-          <!-- Contact header -->
-          <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800/50">
-            <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-neutral-200">{{ group.displayName }}</span>
-              <span class="text-[10px] text-neutral-600 font-mono">{{ group.resourceName.replace('people/', '') }}</span>
-              <UBadge :label="`${group.changes.length} changes`" variant="subtle" size="xs" color="neutral" />
-            </div>
-            <div class="flex gap-1">
-              <UButton size="xs" variant="ghost" color="success" label="All" icon="i-lucide-check" @click.stop="decideAllForContact(group.resourceName, 'approved')" />
-              <UButton size="xs" variant="ghost" color="error" label="All" icon="i-lucide-x" @click.stop="decideAllForContact(group.resourceName, 'rejected')" />
-            </div>
-          </div>
+          :group="group"
+          :focused="idx === focusedIndex"
+          :decisions="decisions"
+          @decide="decide"
+          @decide-all="decideAllForContact"
+          @undo-decision="undoDecision"
+          @focus="focusedIndex = idx"
+        />
 
-          <!-- Changes -->
-          <div class="divide-y divide-neutral-800/30">
-            <div
-              v-for="change in group.changes"
-              :key="change.id"
-              class="px-4 py-2.5 flex items-center gap-3"
-              :class="{ 'opacity-40': getDecision(change.id) }"
-            >
-              <!-- Field -->
-              <span class="text-xs font-mono text-neutral-500 w-32 shrink-0 truncate">
-                {{ formatField(change.field) }}
-              </span>
-
-              <!-- Diff -->
-              <div class="flex-1 min-w-0">
-                <DiffDisplay :old-value="change.old" :new-value="change.new" />
-                <!-- Edit input -->
-                <div v-if="editingId === change.id" class="mt-1.5 flex gap-2">
-                  <input
-                    :id="`edit-${change.id}`"
-                    v-model="editValue"
-                    class="flex-1 px-2 py-1 text-xs bg-neutral-800 border border-neutral-700 rounded text-neutral-200 focus:outline-none focus:border-primary-500"
-                    @keydown.enter="submitEdit(change.id)"
-                    @keydown.escape="editingId = null"
-                  />
-                  <UButton size="xs" color="primary" label="Save" @click="submitEdit(change.id)" />
-                  <UButton size="xs" variant="ghost" label="Cancel" @click="editingId = null" />
-                </div>
-              </div>
-
-              <!-- Confidence -->
-              <span class="text-[10px] text-neutral-600 tabular-nums w-10 text-right shrink-0">
-                {{ (change.confidence * 100).toFixed(0) }}%
-              </span>
-
-              <!-- Rule category -->
-              <span class="text-[10px] text-neutral-600 w-24 shrink-0 truncate" :title="change.reason">
-                {{ change.ruleCategory }}
-              </span>
-
-              <!-- Decision badge or action buttons -->
-              <div class="flex items-center gap-1 shrink-0 w-36 justify-end">
-                <template v-if="getDecision(change.id)">
-                  <UBadge
-                    :label="getDecision(change.id)!.decision"
-                    :color="decisionColor(getDecision(change.id)!.decision)"
-                    variant="subtle"
-                    size="xs"
-                  />
-                  <UButton
-                    size="xs"
-                    variant="ghost"
-                    icon="i-lucide-undo-2"
-                    color="neutral"
-                    @click.stop="delete decisions[change.id]; recomputeStats(); saveToLocalStorage()"
-                  />
-                </template>
-                <template v-else>
-                  <UButton size="xs" variant="ghost" color="success" icon="i-lucide-check" title="Approve (a)" @click.stop="decide(change.id, 'approved')" />
-                  <UButton size="xs" variant="ghost" color="error" icon="i-lucide-x" title="Reject (r)" @click.stop="decide(change.id, 'rejected')" />
-                  <UButton size="xs" variant="ghost" color="warning" icon="i-lucide-pencil" title="Edit (e)" @click.stop="startEdit(change)" />
-                  <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-skip-forward" title="Skip (s)" @click.stop="decide(change.id, 'skipped')" />
-                </template>
-              </div>
-            </div>
-          </div>
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="flex items-center justify-center gap-3 pt-2">
+          <UButton
+            size="xs"
+            variant="ghost"
+            icon="i-lucide-chevron-left"
+            :disabled="currentPage === 0"
+            @click="currentPage--; focusedIndex = 0"
+          />
+          <span class="text-xs text-neutral-400 tabular-nums">
+            {{ currentPage + 1 }} / {{ totalPages }}
+            <span class="text-neutral-600 ml-1">({{ contactGroups.length }} contacts)</span>
+          </span>
+          <UButton
+            size="xs"
+            variant="ghost"
+            icon="i-lucide-chevron-right"
+            :disabled="currentPage >= totalPages - 1"
+            @click="currentPage++; focusedIndex = 0"
+          />
         </div>
       </div>
 
@@ -596,18 +534,18 @@ const progressPercent = computed(() => {
               v-for="change in changes"
               :key="change.id"
               class="px-4 py-2 flex items-center gap-3"
-              :class="{ 'opacity-40': getDecision(change.id) }"
+              :class="{ 'opacity-40': decisions[change.id] }"
             >
               <span class="text-xs text-neutral-400 w-32 shrink-0 truncate">{{ change.displayName }}</span>
-              <span class="text-xs font-mono text-neutral-500 w-28 shrink-0 truncate">{{ formatField(change.field) }}</span>
+              <span class="text-xs font-mono text-neutral-500 w-28 shrink-0 truncate">{{ change.field.replace('phoneNumbers', 'phones').replace('emailAddresses', 'emails').replace('.value', '').replace('.formattedValue', '') }}</span>
               <div class="flex-1 min-w-0">
                 <DiffDisplay :old-value="change.old" :new-value="change.new" />
               </div>
               <span class="text-[10px] text-neutral-600 tabular-nums w-10 text-right shrink-0">{{ (change.confidence * 100).toFixed(0) }}%</span>
               <div class="flex items-center gap-1 shrink-0">
-                <template v-if="getDecision(change.id)">
-                  <UBadge :label="getDecision(change.id)!.decision" :color="decisionColor(getDecision(change.id)!.decision)" variant="subtle" size="xs" />
-                  <UButton size="xs" variant="ghost" icon="i-lucide-undo-2" color="neutral" @click.stop="delete decisions[change.id]; recomputeStats(); saveToLocalStorage()" />
+                <template v-if="decisions[change.id]">
+                  <UBadge :label="decisions[change.id].decision" :color="decisionColor(decisions[change.id].decision)" variant="subtle" size="xs" />
+                  <UButton size="xs" variant="ghost" icon="i-lucide-undo-2" color="neutral" @click.stop="undoDecision(change.id)" />
                 </template>
                 <template v-else>
                   <UButton size="xs" variant="ghost" color="success" icon="i-lucide-check" @click.stop="decide(change.id, 'approved')" />
