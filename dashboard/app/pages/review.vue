@@ -10,8 +10,8 @@ const decisions = ref<Record<string, ReviewDecision>>({})
 const sessionStats = ref({ total: 0, approved: 0, rejected: 0, edited: 0, skipped: 0 })
 
 // Filters
-const fieldFilter = ref('')
-const categoryFilter = ref('')
+const fieldFilter = ref('__all__')
+const categoryFilter = ref('__all__')
 const hideDecided = ref(false)
 
 // View mode
@@ -60,10 +60,10 @@ const allChanges = computed(() => data.value?.changes ?? [])
 // Filtered changes
 const filteredChanges = computed(() => {
   let changes = allChanges.value
-  if (fieldFilter.value) {
+  if (fieldFilter.value && fieldFilter.value !== '__all__') {
     changes = changes.filter(c => c.field.startsWith(fieldFilter.value))
   }
-  if (categoryFilter.value) {
+  if (categoryFilter.value && categoryFilter.value !== '__all__') {
     changes = changes.filter(c => c.ruleCategory === categoryFilter.value)
   }
   if (hideDecided.value) {
@@ -118,7 +118,7 @@ const ruleGroups = computed(() => {
 const fieldOptions = computed(() => {
   const fields = data.value?.stats?.byField ?? {}
   return [
-    { label: 'All fields', value: '' },
+    { label: 'All fields', value: '__all__' },
     ...Object.entries(fields)
       .filter(([k]) => k !== '')
       .sort((a, b) => b[1] - a[1])
@@ -129,7 +129,7 @@ const fieldOptions = computed(() => {
 const categoryOptions = computed(() => {
   const cats = data.value?.stats?.byCategory ?? {}
   return [
-    { label: 'All rules', value: '' },
+    { label: 'All rules', value: '__all__' },
     ...Object.entries(cats)
       .filter(([k]) => k !== '')
       .sort((a, b) => b[1] - a[1])
