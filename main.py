@@ -3,14 +3,16 @@
 Google Contacts Cleanup Tool — Main CLI Entry Point.
 
 Usage:
-    python main.py auth         # Setup OAuth and test connection
-    python main.py backup       # Create a full backup
-    python main.py analyze      # Analyze contacts and generate workplan
-    python main.py fix          # Apply fixes interactively (batch approval)
-    python main.py verify       # Verify changes against backup
-    python main.py rollback     # Rollback changes from changelog
-    python main.py resume       # Resume from last checkpoint
-    python main.py info         # Show session/backup/workplan info
+    python main.py auth           # Setup OAuth and test connection
+    python main.py backup         # Create a full backup
+    python main.py analyze        # Analyze contacts and generate workplan
+    python main.py fix            # Apply fixes interactively (batch approval)
+    python main.py verify         # Verify changes against backup
+    python main.py rollback       # Rollback changes from changelog
+    python main.py resume         # Resume from last checkpoint
+    python main.py info           # Show session/backup/workplan info
+    python main.py auth-activity  # Authenticate for Gmail+Calendar scanning
+    python main.py tag-activity   # Scan interactions and assign year labels
 """
 import os
 import sys
@@ -807,6 +809,102 @@ def cmd_info():
         print("⏸  Žiadna nedokončená relácia.")
 
 
+def cmd_auth_activity():
+    """Authenticate both accounts for Gmail + Calendar access."""
+    from config import ACTIVITY_ACCOUNTS
+    from auth import authenticate_for_activity
+
+    print("🔐 Activity Tagging — Autentifikácia")
+    print("=" * 50)
+    print()
+
+    for account in ACTIVITY_ACCOUNTS:
+        email = account["email"]
+        print(f"── {email} ──")
+        try:
+            creds = authenticate_for_activity(email)
+            # Quick test: list 1 Gmail message
+            from googleapiclient.discovery import build
+            gmail = build("gmail", "v1", credentials=creds)
+            result = gmail.users().messages().list(userId="me", maxResults=1).execute()
+            count = result.get("resultSizeEstimate", 0)
+            print(f"✅ Gmail OK (messages: ~{count})")
+
+            cal = build("calendar", "v3", credentials=creds)
+            cal_list = cal.calendarList().list(maxResults=1).execute()
+            print(f"✅ Calendar OK")
+        except Exception as e:
+            print(f"❌ Chyba: {e}")
+        print()
+
+    print("✅ Hotovo! Teraz môžeš spustiť 'python main.py tag-activity'")
+
+
+def cmd_tag_activity(skip_scan=False, dry_run=False):
+    """Scan Gmail + Calendar and assign year-based labels to contacts."""
+    from config import ACTIVITY_ACCOUNTS
+    from auth import authenticate, authenticate_for_activity
+    from interaction_scanner import InteractionScanner
+
+    print("🏷  Activity Tagging — Skenovanie a označovanie kontaktov")
+    print("=" * 50)
+    print()
+
+    if dry_run:
+        print("ℹ️  DRY RUN — žiadne labely nebudú priradené")
+        print()
+
+    # Step 1: Get contacts
+    creds = authenticate()
+    client = PeopleAPIClient(creds)
+
+    print("📡 Sťahujem kontakty...")
+
+    def progress(fetched, total):
+        print(f"\r   Stiahnuté: {fetched} / ~{total}  ", end="", flush=True)
+
+    contacts = client.get_all_contacts(progress_callback=progress)
+    print()
+    print(f"   Celkom kontaktov: {len(contacts)}")
+    print()
+
+    # Step 2: Authenticate activity accounts
+    account_credentials = []
+    if not skip_scan:
+        for account in ACTIVITY_ACCOUNTS:
+            email = account["email"]
+            print(f"🔐 Autentifikujem {email}...")
+            try:
+                acreds = authenticate_for_activity(email)
+                account_credentials.append((email, acreds))
+                print(f"   ✅ OK")
+            except Exception as e:
+                print(f"   ⚠️  Preskakujem {email}: {e}")
+        print()
+
+    # Step 3: Scan and assign
+    scanner = InteractionScanner(contacts)
+    stats = scanner.run_full_scan(
+        account_credentials=account_credentials,
+        client=client,
+        skip_scan=skip_scan,
+        dry_run=dry_run,
+    )
+
+    # Print results
+    print()
+    print("═══════════════════════════════════════════")
+    print("       ACTIVITY TAGGING RESULTS")
+    print("═══════════════════════════════════════════")
+    for label in sorted(stats.keys()):
+        count = stats[label]
+        print(f"  {label}: {count} contacts {'(would assign)' if dry_run else 'assigned'}")
+    total = sum(stats.values())
+    print(f"  ────────────────────")
+    print(f"  Total: {total}")
+    print("═══════════════════════════════════════════")
+
+
 def main():
     """Main entry point."""
     import argparse
@@ -818,12 +916,17 @@ def main():
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["auth", "backup", "analyze", "analyse", "fix", "ai-review", "verify", "rollback", "resume", "info"],
+        choices=[
+            "auth", "backup", "analyze", "analyse", "fix", "ai-review",
+            "verify", "rollback", "resume", "info",
+            "auth-activity", "tag-activity",
+        ],
         help="Príkaz na vykonanie",
     )
     parser.add_argument("--auto", action="store_true", help="Automatický režim (bez interakcie)")
     parser.add_argument("--confidence", type=float, default=0.90, help="Min. confidence pre auto-apply (default: 0.90)")
     parser.add_argument("--dry-run", action="store_true", help="Len analýza, žiadne zmeny")
+    parser.add_argument("--skip-scan", action="store_true", help="Preskočiť Gmail/Calendar sken, použiť cache")
 
     args = parser.parse_args()
 
@@ -844,6 +947,7 @@ def main():
         "rollback": cmd_rollback,
         "resume": cmd_resume,
         "info": cmd_info,
+        "auth-activity": cmd_auth_activity,
     }
 
     try:
@@ -851,6 +955,11 @@ def main():
             cmd_fix(
                 auto_mode=args.auto,
                 confidence_threshold=args.confidence,
+                dry_run=args.dry_run,
+            )
+        elif command == "tag-activity":
+            cmd_tag_activity(
+                skip_scan=args.skip_scan,
                 dry_run=args.dry_run,
             )
         elif command in simple_commands:

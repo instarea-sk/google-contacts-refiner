@@ -190,7 +190,7 @@ class PeopleAPIClient:
             self.contact_groups.get,
             is_write=False,
             resourceName=group_resource_name,
-            maxMembers=1000,
+            maxMembers=20000,
             groupFields="name,groupType,memberCount",
         )
         return result.get("memberResourceNames", [])
@@ -283,5 +283,26 @@ class PeopleAPIClient:
             self.contact_groups.members().modify,
             is_write=True,
             resourceName=group_resource_name,
+            body=body,
+        )
+
+    def create_contact_group(self, name: str) -> dict:
+        """
+        Create a new contact group (label).
+
+        Args:
+            name: Display name for the group.
+
+        Returns:
+            Created contactGroup resource.
+        """
+        body = {
+            "contactGroup": {
+                "name": name,
+            }
+        }
+        return self._retry(
+            self.contact_groups.create,
+            is_write=True,
             body=body,
         )

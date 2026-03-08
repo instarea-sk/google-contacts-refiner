@@ -579,6 +579,25 @@ SURNAME_SUFFIX_PATTERNS = {
     "skova": "šková",
 }
 
+# ── Activity Tagging ──────────────────────────────────────────────────────
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+ACTIVITY_SCOPES = GMAIL_SCOPES + CALENDAR_SCOPES
+
+ACTIVITY_ACCOUNTS = [
+    {"email": "peterfusek1980@gmail.com", "token_file": "token_personal.json", "secret_name": None},
+    {"email": "peter.fusek@instarea.sk", "token_file": "token_work.json", "secret_name": "work-gmail-refresh-token"},
+]
+
+INTERACTIONS_CACHE = DATA_DIR / "interactions_cache.json"
+RESCAN_INTERVAL_DAYS = 7  # Skip emails scanned within this many days
+GMAIL_RATE_LIMIT = 2500   # Gmail API requests per minute (generous)
+CALENDAR_EVENTS_SINCE = "2015-01-01T00:00:00Z"  # Fetch events since this date
+
+# Year labels
+ACTIVITY_LABEL_PREFIX = "Y"  # e.g. Y2025, Y2024
+NEVER_IN_TOUCH_LABEL = "Never in touch"
+
 # ── PSČ Patterns ───────────────────────────────────────────────────────────
 # Slovak PSČ: 0xxxx, 8xxxx, 9xxxx
 # Czech PSČ: 1xxxx-7xxxx

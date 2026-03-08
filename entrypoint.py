@@ -291,6 +291,19 @@ def run():
     else:
         logger.info("Phase 2: No promoted changes, skipping fix")
 
+    # ── Phase 3 (optional): Activity Tagging ────────────────────────
+    enable_activity = os.getenv("ENABLE_ACTIVITY_TAGGING", "").lower() in ("1", "true", "yes")
+    if enable_activity:
+        logger.info("Phase 3: Activity Tagging")
+        try:
+            from main import cmd_tag_activity
+            cmd_tag_activity(dry_run=dry_run)
+        except Exception as e:
+            logger.error(f"Activity tagging failed (non-fatal): {e}")
+            traceback.print_exc()
+    else:
+        logger.info("Phase 3 skipped (ENABLE_ACTIVITY_TAGGING not set)")
+
     _log_elapsed(start)
 
 
