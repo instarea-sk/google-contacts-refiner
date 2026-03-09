@@ -34,8 +34,7 @@ function getStorage(): Storage {
         creds.private_key = creds.private_key.replace(/\\n/g, '\n')
       }
       storage = new Storage({ credentials: creds })
-      console.log('[GCS] Using credentials from env var - project:', creds.project_id,
-        'pk_len:', creds.private_key?.length, 'has_newlines:', creds.private_key?.includes('\n'))
+      console.log('[GCS] Using credentials from env var - project:', creds.project_id)
       return storage
     } catch (err) {
       console.error('[GCS] Failed to parse SA credentials:', (err as Error).message)
@@ -214,10 +213,16 @@ export async function getLatestReviewFile(): Promise<{ path: string; data: unkno
 }
 
 export async function getReviewSession(sessionId: string): Promise<ReviewSession | null> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+    throw createError({ statusCode: 400, message: 'Invalid sessionId format' })
+  }
   return readJson<ReviewSession>(`data/review_sessions/${sessionId}.json`)
 }
 
 export async function saveReviewSession(session: ReviewSession): Promise<void> {
+  if (!/^[a-zA-Z0-9_-]+$/.test(session.id)) {
+    throw createError({ statusCode: 400, message: 'Invalid session id format' })
+  }
   await writeJson(`data/review_sessions/${session.id}.json`, session)
 }
 

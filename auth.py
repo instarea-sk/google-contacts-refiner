@@ -100,6 +100,7 @@ def authenticate(force_new: bool = False) -> Credentials:
 
         # Save token for next time
         TOKEN_FILE.write_text(creds.to_json())
+        TOKEN_FILE.chmod(0o600)
         print(f"✅ Token uložený do {TOKEN_FILE}")
 
     return creds
@@ -207,6 +208,7 @@ def authenticate_for_activity(account_email: str, force_new: bool = False) -> Cr
         )
 
         token_path.write_text(creds.to_json())
+        token_path.chmod(0o600)
         print(f"✅ Token uložený do {token_path}")
 
     return creds

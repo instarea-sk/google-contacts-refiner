@@ -14,6 +14,9 @@ export default defineEventHandler(async (event) => {
   if (!body?.sessionId || !body?.changeIds?.length) {
     throw createError({ statusCode: 400, message: 'Missing sessionId or changeIds' })
   }
+  if (!['approved', 'rejected'].includes(body.decision)) {
+    throw createError({ statusCode: 400, message: 'Invalid decision value' })
+  }
 
   let session = await getReviewSession(body.sessionId)
   if (!session) {

@@ -29,15 +29,15 @@ def send_notification(title: str, message: str):
 
 
 def _send_macos_notification(title: str, message: str):
-    """Send a macOS notification via osascript."""
+    """Send a macOS notification via osascript with stdin to avoid injection."""
     try:
-        safe_title = title.replace('"', '\\"')
-        safe_message = message.replace('"', '\\"')
+        script = (
+            'on run argv\n'
+            '  display notification (item 2 of argv) with title (item 1 of argv)\n'
+            'end run'
+        )
         subprocess.run(
-            [
-                "osascript", "-e",
-                f'display notification "{safe_message}" with title "{safe_title}"',
-            ],
+            ["osascript", "-e", script, title, message],
             capture_output=True,
             timeout=5,
         )

@@ -27,6 +27,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Validate decisions
+  const validDecisions = ['approved', 'rejected', 'edited', 'skipped']
+  for (const d of body.decisions) {
+    if (!validDecisions.includes(d.decision)) {
+      throw createError({ statusCode: 400, message: `Invalid decision: ${d.decision}` })
+    }
+  }
+
   // Apply decisions
   const feedbackEntries: FeedbackEntry[] = []
   for (const d of body.decisions) {
