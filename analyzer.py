@@ -81,10 +81,14 @@ def analyze_contact(person: dict, ai_analyzer=None) -> dict:
     # Run enrichment
     changes.extend(enrich_contact(person))
 
-    # Remove changes where old == new (no-ops)
+    # Remove changes where old == new (no-ops) or new is empty
+    # Allow empty new for middleName (clearing junk from name fields)
     changes = [
         c for c in changes
-        if c.get("old") != c.get("new") and c.get("new") not in (None, "")
+        if c.get("old") != c.get("new") and (
+            c.get("new") not in (None, "")
+            or "middleName" in c.get("field", "")
+        )
     ]
 
     # Adjust confidence based on user feedback history
