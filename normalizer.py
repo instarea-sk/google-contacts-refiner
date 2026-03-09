@@ -420,6 +420,54 @@ def normalize_name(person: dict) -> list[dict]:
     prefix = name_data.get("honorificPrefix", "")
     suffix = name_data.get("honorificSuffix", "")
 
+    # ── Parse X.500 Distinguished Name format ─────────────────────
+    # e.g. "CN=Dasa MATUSIKOVA/O=RIDB/C=AT"
+    dn_source = display or given or family
+    if dn_source and re.match(r'^[A-Z]{1,3}=', dn_source):
+        dn_parts = {}
+        for segment in re.split(r'[/,]', dn_source):
+            if '=' in segment:
+                key, val = segment.split('=', 1)
+                dn_parts[key.strip().upper()] = val.strip()
+        cn = dn_parts.get("CN", "")
+        if cn:
+            parsed = split_name_fields(cn)
+            new_given = parsed.get("givenName", "")
+            new_family = parsed.get("familyName", "")
+            if new_given and new_given != given:
+                changes.append({
+                    "field": "names[0].givenName",
+                    "old": given,
+                    "new": title_case_sk(new_given),
+                    "confidence": 0.95,
+                    "reason": "extrakcia mena z X.500 DN formátu",
+                })
+            if new_family and new_family != family:
+                changes.append({
+                    "field": "names[0].familyName",
+                    "old": family,
+                    "new": title_case_sk(new_family),
+                    "confidence": 0.95,
+                    "reason": "extrakcia priezviska z X.500 DN formátu",
+                })
+            # Add org from O= if present and not already in organizations
+            dn_org = dn_parts.get("O", "")
+            if dn_org:
+                existing_orgs = {
+                    o.get("name", "").lower()
+                    for o in person.get("organizations", [])
+                }
+                if dn_org.lower() not in existing_orgs:
+                    changes.append({
+                        "field": "organizations[+].name",
+                        "old": "",
+                        "new": dn_org,
+                        "confidence": 0.90,
+                        "reason": "extrakcia organizácie z X.500 DN formátu",
+                    })
+            given = title_case_sk(new_given) if new_given else given
+            family = title_case_sk(new_family) if new_family else family
+
     # ── Fix company name stuck in name fields ─────────────────────
     company_fix = _detect_company_in_name(person)
     if company_fix:
@@ -807,6 +855,8 @@ def normalize_addresses(person: dict) -> list[dict]:
         postal = addr.get("postalCode", "")
         country = addr.get("country", "")
         country_code = addr.get("countryCode", "")
+        street = addr.get("streetAddress", "")
+        city = addr.get("city", "")
 
         # Normalize PSČ
         if postal:
@@ -820,8 +870,9 @@ def normalize_addresses(person: dict) -> list[dict]:
                     "reason": "formátovanie PSČ (XXX XX)",
                 })
 
-            # Add country if missing
-            if detected and not country and not country_code:
+            # Add country if missing — but only if address has other useful fields
+            # (street or city). Country-only enrichment adds noise with little value.
+            if detected and not country and not country_code and (street or city):
                 country_name = "Slovensko" if detected == "SK" else "Česko"
                 changes.append({
                     "field": f"addresses[{i}].country",
@@ -840,8 +891,6 @@ def normalize_addresses(person: dict) -> list[dict]:
 
         # Try to parse unstructured address
         formatted_value = addr.get("formattedValue", "")
-        street = addr.get("streetAddress", "")
-        city = addr.get("city", "")
 
         if formatted_value and not street and not city:
             parsed = _try_parse_address(formatted_value)

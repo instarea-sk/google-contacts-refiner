@@ -71,11 +71,12 @@ def _process_review_feedback():
                 decision = change.get("decision", "")
                 resource_name = change.get("resourceName")
 
-                # Collect feedback for memory learning
-                if decision in ("approved", "edited"):
+                # Collect feedback for memory learning (approvals, edits, AND rejections)
+                if decision in ("approved", "edited", "rejected"):
+                    dtype_map = {"approved": "approval", "edited": "edit", "rejected": "rejection"}
                     feedback_entries.append({
-                        "type": "approval" if decision == "approved" else "edit",
-                        "ruleCategory": change.get("reason", "other"),
+                        "type": dtype_map[decision],
+                        "ruleCategory": memory.extract_rule_category(change.get("reason", "")),
                         "field": change.get("field", ""),
                         "old": change.get("old", ""),
                         "suggested": change.get("new", ""),
@@ -83,8 +84,8 @@ def _process_review_feedback():
                         "confidence": change.get("confidence", 0),
                     })
 
-                    # Collect for API application
-                    if resource_name and change.get("field"):
+                    # Collect approved/edited for API application (not rejections)
+                    if decision in ("approved", "edited") and resource_name and change.get("field"):
                         new_value = change.get("editedValue") or change.get("new", "")
                         changes_by_contact[resource_name].append({
                             "field": change["field"],

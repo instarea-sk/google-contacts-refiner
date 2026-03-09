@@ -37,11 +37,12 @@ export default defineEventHandler(async (event) => {
   }
 
   // Export enriched decisions with full change metadata
+  // Include rejections too so the learning loop can adjust confidence
   const enrichedChanges: Array<Record<string, unknown>> = []
   let totalDecisions = 0
   for (const [changeId, d] of Object.entries(session.decisions)) {
     totalDecisions++
-    if (d.decision === 'approved' || d.decision === 'edited') {
+    if (d.decision === 'approved' || d.decision === 'edited' || d.decision === 'rejected') {
       const meta = changeMap.get(changeId)
       enrichedChanges.push({
         changeId,
