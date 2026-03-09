@@ -184,6 +184,13 @@ def run():
     from config import AI_REVIEW_CHECKPOINT
     from recovery import RecoveryManager
 
+    # ── Pre-phase: Refresh stale code tables ──────────────────────────
+    try:
+        from code_tables import tables
+        tables.refresh_if_stale()
+    except Exception as e:
+        logger.warning("Code table refresh failed (non-fatal): %s", e)
+
     # ── Phase 0: Process review feedback ─────────────────────────────
     try:
         _process_review_feedback()

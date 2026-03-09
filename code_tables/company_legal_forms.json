@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "description": "Company legal form abbreviations with proper casing (SK/CZ/international)",
+  "entries": {
+    "s.r.o.": "s.r.o.",
+    "spol. s r.o.": "spol. s r.o.",
+    "a.s.": "a.s.",
+    "spol.": "spol.",
+    "k.s.": "k.s.",
+    "v.o.s.": "v.o.s.",
+    "z.s.": "z.s.",
+    "o.z.": "o.z.",
+    "n.o.": "n.o.",
+    "š.p.": "š.p.",
+    "s.p.": "s.p.",
+    "gmbh": "GmbH",
+    "ltd": "Ltd",
+    "ltd.": "Ltd.",
+    "inc": "Inc",
+    "inc.": "Inc.",
+    "corp": "Corp",
+    "corp.": "Corp.",
+    "ag": "AG",
+    "llc": "LLC",
+    "plc": "PLC",
+    "se": "SE",
+    "sa": "SA"
+  }
+}

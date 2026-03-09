@@ -2,7 +2,10 @@
 Configuration and constants for Google Contacts Cleanup tool.
 """
 import os
+import logging
 from pathlib import Path
+
+_logger = logging.getLogger(__name__)
 
 # ── Environment ──────────────────────────────────────────────────────────
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")  # "local" | "cloud"
@@ -79,44 +82,60 @@ AUTO_MAX_CHANGES_PER_RUN = 200         # Safety limit for auto-mode
 AI_REVIEW_CHECKPOINT = DATA_DIR / "ai_review_checkpoint.json"
 AI_REVIEW_HISTORY = DATA_DIR / "ai_review_history.json"
 
+# ── Code Table Loading ─────────────────────────────────────────────────────
+def _load_table(name, default):
+    """Load from code_tables with fallback to inline default."""
+    try:
+        from code_tables import tables
+        result = tables.get(name)
+        if result:
+            return result
+    except Exception as e:
+        _logger.debug("Code table %s unavailable, using default: %s", name, e)
+    return default
+
 # ── Phone Number Defaults ──────────────────────────────────────────────────
 DEFAULT_REGION = "SK"
 SUPPORTED_REGIONS = ["SK", "CZ"]
 
 # SK mobile prefixes (after country code)
-SK_MOBILE_PREFIXES = ["90", "91", "92", "93", "94", "95"]
-CZ_MOBILE_PREFIXES = ["60", "70", "72", "73", "77", "78"]
+_DEFAULT_SK_MOBILE = ["90", "91", "92", "93", "94", "95"]
+_DEFAULT_CZ_MOBILE = ["60", "70", "72", "73", "77", "78"]
+_phone_prefixes = _load_table("phone_prefixes", {"SK": _DEFAULT_SK_MOBILE, "CZ": _DEFAULT_CZ_MOBILE})
+SK_MOBILE_PREFIXES = _phone_prefixes.get("SK", _DEFAULT_SK_MOBILE)
+CZ_MOBILE_PREFIXES = _phone_prefixes.get("CZ", _DEFAULT_CZ_MOBILE)
 
 # ── Email Domains ──────────────────────────────────────────────────────────
 # Free/personal email providers (not corporate)
-FREE_EMAIL_DOMAINS = {
-    # Slovak
+_DEFAULT_FREE_EMAIL_DOMAINS = {
     "gmail.com", "googlemail.com", "azet.sk", "post.sk",
     "zoznam.sk", "centrum.sk", "stonline.sk", "pobox.sk",
     "mail.t-com.sk", "t-com.sk", "orangemail.sk",
-    # Czech
     "seznam.cz", "email.cz", "centrum.cz", "volny.cz",
     "atlas.cz", "quick.cz", "tiscali.cz",
-    # International
     "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com",
     "live.com", "msn.com", "aol.com", "icloud.com", "me.com",
     "mac.com", "protonmail.com", "proton.me", "tutanota.com",
     "mail.com", "gmx.com", "gmx.de", "web.de", "yandex.com",
     "zoho.com", "fastmail.com",
 }
+FREE_EMAIL_DOMAINS = _load_table("free_email_domains", _DEFAULT_FREE_EMAIL_DOMAINS)
 
 # ── Name Prefixes (Titles) ────────────────────────────────────────────────
-NAME_PREFIXES = [
+_DEFAULT_NAME_PREFIXES = [
     "Ing.", "Mgr.", "Bc.", "MUDr.", "JUDr.", "PhDr.", "RNDr.",
     "PaedDr.", "ThDr.", "MVDr.", "PhD.", "CSc.", "DrSc.",
     "Doc.", "Prof.", "Dr.", "MBA", "MSc.", "BSc.",
     "Ing. arch.", "ThLic.", "ArtD.",
 ]
+NAME_PREFIXES = _load_table("name_prefixes", _DEFAULT_NAME_PREFIXES)
 
 # ── SK/CZ Diacritics Dictionary ───────────────────────────────────────────
 # Maps ASCII versions to proper diacritical forms.
 # Covers given names, surnames, and common patterns.
-SK_CZ_NAMES_DIACRITICS = {
+# NOTE: This inline dict serves as the default fallback. The code_tables/
+# version is the canonical source — edit that JSON file to add new names.
+SK_CZ_NAMES_DIACRITICS = _load_table("name_diacritics", {
     # ═══════════════════════════════════════════════════════════════
     # MUŽSKÉ MENÁ (Male given names)
     # ═══════════════════════════════════════════════════════════════
@@ -554,11 +573,11 @@ SK_CZ_NAMES_DIACRITICS = {
     "Zilka": "Žilka",
     "Zilkova": "Žilková",
     "Zubek": "Žubek",
-}
+})
 
 # Surname patterns: ASCII suffix → diacritical suffix
 # Applied when exact match not in dictionary
-SURNAME_SUFFIX_PATTERNS = {
+SURNAME_SUFFIX_PATTERNS = _load_table("surname_suffixes", {
     # -ak → -ák  (very common)
     "ak": "ák",
     "akova": "áková",
@@ -577,7 +596,7 @@ SURNAME_SUFFIX_PATTERNS = {
     # -sek → -šek
     "sek": "šek",
     "skova": "šková",
-}
+})
 
 # ── Activity Tagging ──────────────────────────────────────────────────────
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]

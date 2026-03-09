@@ -60,7 +60,7 @@ def fix_diacritics(name: str, memory=None) -> tuple[str, float]:
             # Preserve original casing pattern
             if name[0].isupper():
                 return value, 0.95
-            return value, 0.90
+            return value, 0.92
 
     # Pattern-based suffix matching for surnames
     lower = ascii_name.lower()
@@ -335,7 +335,7 @@ def _detect_company_in_name(person: dict) -> Optional[dict]:
                 "field": "names[0].familyName",
                 "old": family,
                 "new": real_surname,
-                "confidence": 0.85,
+                "confidence": 0.92,
                 "reason": "familyName obsahoval len právnu formu firmy, priezvisko z displayName",
             })
             # Extract full company name from displayName and add to orgs
@@ -345,7 +345,7 @@ def _detect_company_in_name(person: dict) -> Optional[dict]:
                     "field": "organizations[+].name",
                     "old": "",
                     "new": company_name,
-                    "confidence": 0.85,
+                    "confidence": 0.92,
                     "reason": "firma z mena (%s) pridaná do organizácií" % company_name,
                 })
             return {"changes": changes, "given": given, "family": real_surname, "middle": middle}
@@ -816,7 +816,7 @@ def normalize_addresses(person: dict) -> list[dict]:
                     "field": f"addresses[{i}].postalCode",
                     "old": postal,
                     "new": formatted,
-                    "confidence": 0.90,
+                    "confidence": 0.95,
                     "reason": "formátovanie PSČ (XXX XX)",
                 })
 

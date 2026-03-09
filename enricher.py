@@ -152,7 +152,7 @@ def enrich_from_notes(person: dict) -> list[dict]:
                 "field": "userDefined[+]",
                 "old": "",
                 "new": ico,
-                "confidence": 0.80,
+                "confidence": 0.92,
                 "reason": "IČO nájdené v poznámke",
                 "extra": {"key": "IČO", "value": ico},
             })
@@ -166,7 +166,7 @@ def enrich_from_notes(person: dict) -> list[dict]:
                 "field": "userDefined[+]",
                 "old": "",
                 "new": dic,
-                "confidence": 0.80,
+                "confidence": 0.92,
                 "reason": "DIČ nájdené v poznámke",
                 "extra": {"key": "DIČ", "value": dic},
             })
@@ -180,7 +180,7 @@ def enrich_from_notes(person: dict) -> list[dict]:
                 "field": "userDefined[+]",
                 "old": "",
                 "new": icdph,
-                "confidence": 0.80,
+                "confidence": 0.92,
                 "reason": "IČ DPH nájdené v poznámke",
                 "extra": {"key": "IČ DPH", "value": icdph},
             })

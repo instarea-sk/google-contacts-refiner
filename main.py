@@ -905,6 +905,42 @@ def cmd_tag_activity(skip_scan=False, dry_run=False):
     print("═══════════════════════════════════════════")
 
 
+def cmd_refresh_tables(table=None):
+    """Refresh code tables from external sources."""
+    from code_tables import tables
+
+    print("🔄 Code Tables — Refresh")
+    print("=" * 50)
+    print()
+
+    # Show current status
+    info = tables.info()
+    for name, status in info.items():
+        source = "seed" if not status.get("has_cache") else "cached"
+        count = status.get("count", "?")
+        age = f"{status['age_days']}d ago" if "age_days" in status else "never refreshed"
+        url = "🌐" if status.get("refresh_url") else "📋 manual"
+        print(f"  {name:25s}  {count:>5} entries  ({source}, {age})  {url}")
+    print()
+
+    # Refresh
+    print("Refreshing...")
+    results = tables.refresh(name=table, force=True)
+    print()
+
+    for name, result in results.items():
+        status = result["status"]
+        if status == "updated":
+            print(f"  ✅ {name}: {result['old_count']} → {result['new_count']} entries (+{result['added']})")
+        elif status == "skipped":
+            print(f"  ⏭  {name}: {result['reason']}")
+        else:
+            print(f"  ❌ {name}: {result.get('reason', 'unknown error')}")
+
+    print()
+    print("Done.")
+
+
 def main():
     """Main entry point."""
     import argparse
@@ -919,7 +955,7 @@ def main():
         choices=[
             "auth", "backup", "analyze", "analyse", "fix", "ai-review",
             "verify", "rollback", "resume", "info",
-            "auth-activity", "tag-activity",
+            "auth-activity", "tag-activity", "refresh-tables",
         ],
         help="Príkaz na vykonanie",
     )
@@ -948,6 +984,7 @@ def main():
         "resume": cmd_resume,
         "info": cmd_info,
         "auth-activity": cmd_auth_activity,
+        "refresh-tables": cmd_refresh_tables,
     }
 
     try:

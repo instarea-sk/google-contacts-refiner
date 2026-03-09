@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "description": "Academic/professional title prefixes (SK/CZ)",
+  "entries": [
+    "Ing.",
+    "Mgr.",
+    "Bc.",
+    "MUDr.",
+    "JUDr.",
+    "PhDr.",
+    "RNDr.",
+    "PaedDr.",
+    "ThDr.",
+    "MVDr.",
+    "PhD.",
+    "CSc.",
+    "DrSc.",
+    "Doc.",
+    "Prof.",
+    "Dr.",
+    "MBA",
+    "MSc.",
+    "BSc.",
+    "Ing. arch.",
+    "ThLic.",
+    "ArtD."
+  ]
+}

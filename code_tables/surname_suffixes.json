@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "description": "Surname suffix patterns: ASCII → diacritical (fallback for dictionary miss)",
+  "entries": {
+    "ak": "ák",
+    "akova": "áková",
+    "ik": "ík",
+    "ikova": "íková",
+    "ar": "ár",
+    "arova": "árová",
+    "cek": "ček",
+    "ckova": "čková",
+    "sek": "šek",
+    "skova": "šková"
+  }
+}
