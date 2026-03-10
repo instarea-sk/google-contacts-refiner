@@ -26,6 +26,11 @@ from config import (
     CALENDAR_EVENTS_SINCE,
     GMAIL_RATE_LIMIT,
     INTERACTIONS_CACHE,
+    LTNS_GROUP_NAME,
+    LTNS_MIN_INTERACTIONS,
+    LTNS_MONTHS_THRESHOLD,
+    LTNS_NOTE_MARKER,
+    LTNS_TOP_N,
     NEVER_IN_TOUCH_LABEL,
     RESCAN_INTERVAL_DAYS,
 )
@@ -50,6 +55,22 @@ MASS_EVENT_PATTERNS = [
     r"stretavka\s+z\s+VS",
 ]
 _MASS_EVENT_RE = re.compile("|".join(MASS_EVENT_PATTERNS), re.IGNORECASE)
+
+
+def _classify_url(url: str) -> str:
+    """Classify a URL into a type (linkedin, facebook, twitter, website)."""
+    url_lower = url.lower()
+    if "linkedin.com" in url_lower:
+        return "linkedin"
+    if "facebook.com" in url_lower or "fb.com" in url_lower:
+        return "facebook"
+    if "twitter.com" in url_lower or "x.com" in url_lower:
+        return "twitter"
+    if "instagram.com" in url_lower:
+        return "instagram"
+    if "github.com" in url_lower:
+        return "github"
+    return "website"
 
 
 class InteractionScanner:
@@ -812,6 +833,367 @@ class InteractionScanner:
             logger.info(f"{label}: Added {added} contacts (skipped {len(contact_rns) - len(new_contacts)} existing)")
 
         return stats
+
+    # ── LTNS (Long Time No See) Reconnect ──────────────────────────────
+
+    def identify_ltns(
+        self,
+        client: PeopleAPIClient,
+        top_n: int = LTNS_TOP_N,
+        dry_run: bool = False,
+    ) -> list[dict]:
+        """
+        Identify contacts to reconnect with (Long Time No See).
+
+        Criteria:
+        - At least LTNS_MIN_INTERACTIONS personal interactions
+        - Last interaction > LTNS_MONTHS_THRESHOLD months ago
+        - Not generic-email-only contacts
+
+        Ranking: interaction_count * months_since_last_contact
+
+        Returns list of dicts: [{resourceName, name, last_date, interaction_count,
+                                  months_gap, score, emails, urls, org}]
+        """
+        activity = self.get_contact_activity()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=LTNS_MONTHS_THRESHOLD * 30)).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc)
+
+        # Build interaction count per contact (count email + meeting entries)
+        contact_interaction_count: dict[str, int] = {}
+        for rn, emails in self._contact_emails.items():
+            count = 0
+            for email in emails:
+                data = self._interactions.get(email, {})
+                if isinstance(data, dict):
+                    if data.get("last_email", {}).get("date"):
+                        count += 1
+                    if data.get("last_meeting", {}).get("date"):
+                        count += 1
+            contact_interaction_count[rn] = count
+
+        # Build contact lookup for names, URLs, orgs
+        contacts_by_rn = {c.get("resourceName", ""): c for c in self.contacts}
+
+        candidates = []
+        for rn, last_date in activity.items():
+            if not last_date:
+                continue
+            if last_date > cutoff:
+                continue  # Too recent
+            interaction_count = contact_interaction_count.get(rn, 0)
+            if interaction_count < LTNS_MIN_INTERACTIONS:
+                continue
+
+            # Calculate months gap
+            try:
+                last_dt = datetime.strptime(last_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                months_gap = (today - last_dt).days / 30.0
+            except ValueError:
+                continue
+
+            score = interaction_count * months_gap
+
+            # Extract contact info
+            contact = contacts_by_rn.get(rn, {})
+            names = contact.get("names", [{}])
+            display_name = names[0].get("displayName", "") if names else ""
+
+            # Extract URLs (LinkedIn, Facebook, etc.)
+            urls = []
+            for url_entry in contact.get("urls", []):
+                url_val = url_entry.get("value", "")
+                if url_val:
+                    url_type = _classify_url(url_val)
+                    urls.append({"url": url_val, "type": url_type})
+
+            # Extract organization
+            orgs = contact.get("organizations", [])
+            org = orgs[0].get("name", "") if orgs else ""
+            title = orgs[0].get("title", "") if orgs else ""
+
+            candidates.append({
+                "resourceName": rn,
+                "name": display_name,
+                "last_date": last_date,
+                "interaction_count": interaction_count,
+                "months_gap": round(months_gap, 1),
+                "score": round(score, 1),
+                "emails": list(self._contact_emails.get(rn, set())),
+                "urls": urls,
+                "org": org,
+                "title": title,
+            })
+
+        # Sort by score descending, take top N
+        candidates.sort(key=lambda c: c["score"], reverse=True)
+        ltns_list = candidates[:top_n]
+
+        logger.info(
+            f"LTNS: {len(candidates)} candidates total, "
+            f"top {len(ltns_list)} selected"
+        )
+
+        if not dry_run and ltns_list:
+            self._create_ltns_group(client, ltns_list)
+
+        return ltns_list
+
+    def _create_ltns_group(self, client: PeopleAPIClient, ltns_list: list[dict]):
+        """Create/populate the LTNS contact group."""
+        # Get or create group
+        existing_groups = client.get_all_contact_groups()
+        group_rn = None
+        for g in existing_groups:
+            if g.get("name") == LTNS_GROUP_NAME:
+                group_rn = g["resourceName"]
+                break
+
+        if not group_rn:
+            logger.info(f"Creating contact group: {LTNS_GROUP_NAME}")
+            group = client.create_contact_group(LTNS_GROUP_NAME)
+            group_rn = group["resourceName"]
+
+        # Get existing members
+        try:
+            existing = set(client.get_contact_group_members(group_rn))
+        except Exception:
+            existing = set()
+
+        # Add new members
+        new_rns = [c["resourceName"] for c in ltns_list if c["resourceName"] not in existing]
+        if new_rns:
+            for batch_start in range(0, len(new_rns), 500):
+                batch = new_rns[batch_start:batch_start + 500]
+                try:
+                    client.add_contact_to_group(group_rn, batch)
+                except Exception as e:
+                    logger.error(f"LTNS: Failed to add {len(batch)} contacts to group: {e}")
+
+            logger.info(f"LTNS: Added {len(new_rns)} contacts to {LTNS_GROUP_NAME} group")
+        else:
+            logger.info(f"LTNS: All {len(ltns_list)} contacts already in {LTNS_GROUP_NAME} group")
+
+    def generate_reconnect_prompts(
+        self,
+        client: PeopleAPIClient,
+        ltns_list: list[dict],
+        dry_run: bool = False,
+    ) -> int:
+        """
+        Generate AI reconnect prompts and write to contact notes.
+
+        Uses last interaction context + org/title to create one-liner
+        conversation starters.
+        """
+        if not ltns_list:
+            return 0
+
+        # Filter to contacts with enough context for meaningful prompts
+        to_prompt = []
+        for c in ltns_list:
+            details = self.get_contact_interaction_details(c["resourceName"])
+            subject = (details.get("last_email") or {}).get("subject", "")
+            snippet = (details.get("last_email") or {}).get("snippet", "")
+            meeting = (details.get("last_meeting") or {}).get("title", "")
+            if subject or snippet or meeting or c.get("org"):
+                to_prompt.append((c, details))
+
+        if not to_prompt:
+            logger.info("LTNS: No contacts with enough context for prompts")
+            return 0
+
+        logger.info(f"LTNS: Generating reconnect prompts for {len(to_prompt)} contacts")
+
+        # Generate prompts via AI in batches
+        prompts = self._generate_reconnect_prompts_ai(to_prompt)
+
+        if dry_run:
+            for c, _ in to_prompt[:5]:
+                prompt = prompts.get(c["resourceName"], "")
+                logger.info(f"  Would add prompt for {c['name']}: {prompt}")
+            return len(prompts)
+
+        # Write prompts to contact notes
+        updated = 0
+        for c, _ in to_prompt:
+            rn = c["resourceName"]
+            prompt_text = prompts.get(rn)
+            if not prompt_text:
+                continue
+
+            try:
+                person = client.get_contact(rn, person_fields="biographies,metadata")
+                etag = person.get("etag", "")
+
+                existing_note = ""
+                for bio in person.get("biographies", []):
+                    if bio.get("contentType") == "TEXT_PLAIN":
+                        existing_note = bio.get("value", "")
+                        break
+
+                # Strip old reconnect prompt if present
+                clean_note = self._strip_reconnect_prompt(existing_note).strip()
+
+                # Build new reconnect block
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                reconnect_block = (
+                    f"{LTNS_NOTE_MARKER} (generated {today}) ──\n"
+                    f"{prompt_text}"
+                )
+
+                # Insert after interaction block (if present) or at top
+                if INTERACTION_NOTE_MARKER in clean_note:
+                    # Find end of interaction block, insert reconnect after it
+                    lines = clean_note.split("\n")
+                    insert_at = 0
+                    in_interaction = False
+                    for i, line in enumerate(lines):
+                        if INTERACTION_NOTE_MARKER in line:
+                            in_interaction = True
+                            continue
+                        if in_interaction:
+                            if not line.strip() or not line.startswith(("Email:", "Meeting:", "Summary:")):
+                                insert_at = i
+                                break
+                            insert_at = i + 1
+
+                    lines.insert(insert_at, f"\n{reconnect_block}")
+                    new_note = "\n".join(lines)
+                else:
+                    new_note = f"{reconnect_block}\n\n{clean_note}" if clean_note else reconnect_block
+
+                body = {
+                    "biographies": [{
+                        "value": new_note,
+                        "contentType": "TEXT_PLAIN",
+                    }]
+                }
+                client.update_contact(rn, etag, body, update_fields="biographies")
+                updated += 1
+
+            except Exception as e:
+                logger.error(f"LTNS: Failed to update notes for {rn}: {e}")
+
+        logger.info(f"LTNS: {updated} reconnect prompts written to notes")
+        return updated
+
+    def _strip_reconnect_prompt(self, note: str) -> str:
+        """Remove existing reconnect prompt block from a note."""
+        if LTNS_NOTE_MARKER not in note:
+            return note
+
+        lines = note.split("\n")
+        result = []
+        in_block = False
+        for line in lines:
+            if LTNS_NOTE_MARKER in line:
+                in_block = True
+                continue
+            if in_block:
+                if not line.strip():
+                    in_block = False
+                    continue
+                continue  # Skip all lines in the block
+            result.append(line)
+
+        return "\n".join(result).rstrip()
+
+    def _generate_reconnect_prompts_ai(
+        self,
+        contacts_with_details: list[tuple[dict, dict]],
+    ) -> dict[str, str]:
+        """Generate AI-powered reconnect conversation starters."""
+        prompts = {}
+
+        try:
+            import anthropic
+            import os
+
+            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            if not api_key:
+                logger.warning("LTNS: No ANTHROPIC_API_KEY, skipping AI prompts")
+                return prompts
+
+            ai_client = anthropic.Anthropic(api_key=api_key)
+
+            # Batch in groups of 20
+            for batch_start in range(0, len(contacts_with_details), 20):
+                batch = contacts_with_details[batch_start:batch_start + 20]
+
+                prompt_parts = []
+                for i, (c, details) in enumerate(batch):
+                    part = f"[{i+1}] {c['name']}"
+                    if c.get("org"):
+                        part += f" ({c['org']}"
+                        if c.get("title"):
+                            part += f", {c['title']}"
+                        part += ")"
+                    le = details.get("last_email") or {}
+                    if le.get("subject"):
+                        part += f"\n  Last email ({le['date']}): {le['subject']}"
+                    if le.get("snippet"):
+                        part += f"\n  Snippet: {le['snippet'][:150]}"
+                    lm = details.get("last_meeting") or {}
+                    if lm.get("title"):
+                        part += f"\n  Last meeting ({lm['date']}): {lm['title']}"
+                    linkedin = [u for u in c.get("urls", []) if u.get("type") == "linkedin"]
+                    if linkedin:
+                        part += f"\n  LinkedIn: {linkedin[0]['url']}"
+                    part += f"\n  Gap: {c['months_gap']} months"
+                    prompt_parts.append(part)
+
+                prompt = (
+                    "You are helping reconnect with old contacts. For each person below, "
+                    "write a brief reconnect note (2-3 lines) that includes:\n"
+                    "1. A natural conversation starter referencing your last interaction\n"
+                    "2. If they have a company/role, mention something relevant to their field\n"
+                    "3. A suggested discussion topic relevant for Instarea (tech consulting company in Slovakia)\n\n"
+                    "Keep it warm, personal, and in English. "
+                    "Reply with numbered entries only.\n\n"
+                    + "\n\n".join(prompt_parts)
+                )
+
+                response = ai_client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+
+                # Parse response
+                text = response.content[0].text
+                current_idx = None
+                current_lines = []
+
+                for line in text.strip().split("\n"):
+                    match = re.match(r"\[(\d+)\](.+)", line.strip())
+                    if match:
+                        # Save previous
+                        if current_idx is not None and current_lines:
+                            if 0 <= current_idx < len(batch):
+                                rn = batch[current_idx][0]["resourceName"]
+                                prompts[rn] = "\n".join(current_lines).strip()
+
+                        current_idx = int(match.group(1)) - 1
+                        current_lines = [match.group(2).strip()]
+                    elif current_idx is not None and line.strip():
+                        current_lines.append(line.strip())
+
+                # Save last entry
+                if current_idx is not None and current_lines:
+                    if 0 <= current_idx < len(batch):
+                        rn = batch[current_idx][0]["resourceName"]
+                        prompts[rn] = "\n".join(current_lines).strip()
+
+                logger.info(
+                    f"LTNS AI: Batch {batch_start // 20 + 1} — "
+                    f"{sum(1 for c, _ in batch if c['resourceName'] in prompts)} prompts"
+                )
+
+        except Exception as e:
+            logger.error(f"LTNS AI prompt generation failed: {e}")
+
+        return prompts
 
     # ── Full Scan Pipeline ──────────────────────────────────────────────
 

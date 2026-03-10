@@ -617,6 +617,13 @@ CALENDAR_EVENTS_SINCE = "2015-01-01T00:00:00Z"  # Fetch events since this date
 ACTIVITY_LABEL_PREFIX = "Y"  # e.g. Y2025, Y2024
 NEVER_IN_TOUCH_LABEL = "Never in touch"
 
+# LTNS (Long Time No See) — reconnect feature
+LTNS_MIN_INTERACTIONS = 2         # Min personal interactions to qualify
+LTNS_MONTHS_THRESHOLD = 12       # No contact for this many months
+LTNS_TOP_N = 50                  # Top N candidates for reconnect list
+LTNS_GROUP_NAME = "LTNS"         # Contact group name
+LTNS_NOTE_MARKER = "── Reconnect Prompt"
+
 # ── PSČ Patterns ───────────────────────────────────────────────────────────
 # Slovak PSČ: 0xxxx, 8xxxx, 9xxxx
 # Czech PSČ: 1xxxx-7xxxx

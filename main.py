@@ -13,6 +13,7 @@ Usage:
     python main.py info           # Show session/backup/workplan info
     python main.py auth-activity  # Authenticate for Gmail+Calendar scanning
     python main.py tag-activity   # Scan interactions and assign year labels
+    python main.py ltns           # Identify LTNS contacts and generate reconnect prompts
 """
 import os
 import sys
@@ -905,6 +906,111 @@ def cmd_tag_activity(skip_scan=False, dry_run=False):
     print("═══════════════════════════════════════════")
 
 
+def cmd_ltns(skip_scan=False, dry_run=False, no_prompts=False):
+    """Identify LTNS (Long Time No See) contacts and generate reconnect prompts."""
+    from config import ACTIVITY_ACCOUNTS, LTNS_TOP_N
+    from auth import authenticate, authenticate_for_activity
+    from interaction_scanner import InteractionScanner
+
+    print("🔄 LTNS — Long Time No See Reconnect")
+    print("=" * 50)
+    print()
+
+    if dry_run:
+        print("ℹ️  DRY RUN — no groups or notes will be updated")
+        print()
+
+    # Step 1: Get contacts
+    creds = authenticate()
+    client = PeopleAPIClient(creds)
+
+    print("📡 Fetching contacts...")
+
+    def progress(fetched, total):
+        print(f"\r   Fetched: {fetched} / ~{total}  ", end="", flush=True)
+
+    contacts = client.get_all_contacts(progress_callback=progress)
+    print()
+    print(f"   Total contacts: {len(contacts)}")
+    print()
+
+    # Step 2: Authenticate activity accounts
+    account_credentials = []
+    if not skip_scan:
+        for account in ACTIVITY_ACCOUNTS:
+            email = account["email"]
+            print(f"🔐 Authenticating {email}...")
+            try:
+                acreds = authenticate_for_activity(email)
+                account_credentials.append((email, acreds))
+                print(f"   ✅ OK")
+            except Exception as e:
+                print(f"   ⚠️  Skipping {email}: {e}")
+        print()
+
+    # Step 3: Scan interactions
+    scanner = InteractionScanner(contacts)
+    if not skip_scan:
+        for account_email, acreds in account_credentials:
+            print(f"📧 Scanning {account_email}...")
+            scanner.scan_gmail(acreds, account_email)
+            scanner.scan_calendar(acreds, account_email)
+        print()
+
+    # Step 4: Identify LTNS candidates
+    print("🔍 Identifying LTNS candidates...")
+    ltns_list = scanner.identify_ltns(client, top_n=LTNS_TOP_N, dry_run=dry_run)
+
+    if not ltns_list:
+        print("ℹ️  No LTNS candidates found.")
+        return
+
+    # Step 5: Display results
+    print()
+    print("═══════════════════════════════════════════")
+    print(f"       LTNS TOP {len(ltns_list)} RECONNECT LIST")
+    print("═══════════════════════════════════════════")
+    for i, c in enumerate(ltns_list, 1):
+        social = ""
+        for u in c.get("urls", []):
+            if u["type"] in ("linkedin", "facebook"):
+                social += f" [{u['type'][0].upper()}]"
+        org_info = f" @ {c['org']}" if c.get("org") else ""
+        title_info = f" ({c['title']})" if c.get("title") else ""
+        print(
+            f"  {i:3d}. {c['name']:<30s}{org_info}{title_info}"
+            f"  last: {c['last_date']}  gap: {c['months_gap']:>5.1f}m"
+            f"  score: {c['score']:>7.1f}{social}"
+        )
+    print("═══════════════════════════════════════════")
+
+    # Count social signals
+    with_linkedin = sum(1 for c in ltns_list if any(u["type"] == "linkedin" for u in c.get("urls", [])))
+    with_facebook = sum(1 for c in ltns_list if any(u["type"] == "facebook" for u in c.get("urls", [])))
+    print(f"  LinkedIn profiles: {with_linkedin}")
+    print(f"  Facebook profiles: {with_facebook}")
+    print()
+
+    # Step 6: Generate reconnect prompts
+    if not no_prompts:
+        print("🤖 Generating reconnect prompts...")
+        updated = scanner.generate_reconnect_prompts(client, ltns_list, dry_run=dry_run)
+        print(f"   Prompts {'generated' if dry_run else 'written'}: {updated}")
+
+    # Save the list to data dir for reference
+    import json
+    from config import DATA_DIR
+    ltns_path = DATA_DIR / "ltns_list.json"
+    ltns_data = {
+        "generated": datetime.now().isoformat(),
+        "count": len(ltns_list),
+        "candidates": ltns_list,
+    }
+    with open(ltns_path, "w", encoding="utf-8") as f:
+        json.dump(ltns_data, f, ensure_ascii=False, indent=2)
+    print(f"   List saved: {ltns_path}")
+
+
 def cmd_refresh_tables(table=None):
     """Refresh code tables from external sources."""
     from code_tables import tables
@@ -955,7 +1061,7 @@ def main():
         choices=[
             "auth", "backup", "analyze", "analyse", "fix", "ai-review",
             "verify", "rollback", "resume", "info",
-            "auth-activity", "tag-activity", "refresh-tables",
+            "auth-activity", "tag-activity", "ltns", "refresh-tables",
         ],
         help="Príkaz na vykonanie",
     )
@@ -963,6 +1069,7 @@ def main():
     parser.add_argument("--confidence", type=float, default=0.90, help="Min. confidence pre auto-apply (default: 0.90)")
     parser.add_argument("--dry-run", action="store_true", help="Len analýza, žiadne zmeny")
     parser.add_argument("--skip-scan", action="store_true", help="Preskočiť Gmail/Calendar sken, použiť cache")
+    parser.add_argument("--no-prompts", action="store_true", help="Skip AI reconnect prompt generation (LTNS)")
 
     args = parser.parse_args()
 
@@ -998,6 +1105,12 @@ def main():
             cmd_tag_activity(
                 skip_scan=args.skip_scan,
                 dry_run=args.dry_run,
+            )
+        elif command == "ltns":
+            cmd_ltns(
+                skip_scan=args.skip_scan,
+                dry_run=args.dry_run,
+                no_prompts=args.no_prompts,
             )
         elif command in simple_commands:
             simple_commands[command]()
