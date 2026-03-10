@@ -87,13 +87,26 @@ def write_review_file(skipped_changes: list[dict]) -> Optional[Path]:
     if not skipped_changes:
         return None
 
+    # Filter out no-change items (old == new) from AI review
+    filtered = []
+    for item in skipped_changes:
+        real_changes = [
+            c for c in item.get("skipped_changes", [])
+            if c.get("old", "") != c.get("new", "")
+        ]
+        if real_changes:
+            filtered.append({**item, "skipped_changes": real_changes})
+
+    if not filtered:
+        return None
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     review_path = DATA_DIR / f"review_{timestamp}.json"
 
     review_data = {
         "generated": datetime.now().isoformat(),
-        "total_items": len(skipped_changes),
-        "items": skipped_changes,
+        "total_items": len(filtered),
+        "items": filtered,
     }
 
     with open(review_path, "w", encoding="utf-8") as f:

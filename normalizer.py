@@ -948,17 +948,18 @@ def normalize_organizations(person: dict) -> list[dict]:
         name = org.get("name", "")
         title = org.get("title", "")
 
-        # Fix casing for company name
+        # Fix casing for company name — skip domain names (e.g. swan.sk, gfk.com)
         if name and (is_all_caps(name) or is_all_lower(name)):
-            fixed = _title_case_company(name)
-            if fixed != name:
-                changes.append({
-                    "field": f"organizations[{i}].name",
-                    "old": name,
-                    "new": fixed,
-                    "confidence": 0.70,
-                    "reason": "oprava veľkosti písmen (organizácia)",
-                })
+            if not re.match(r'^[a-z0-9.-]+\.[a-z]{2,}$', name, re.IGNORECASE):
+                fixed = _title_case_company(name)
+                if fixed != name:
+                    changes.append({
+                        "field": f"organizations[{i}].name",
+                        "old": name,
+                        "new": fixed,
+                        "confidence": 0.70,
+                        "reason": "oprava veľkosti písmen (organizácia)",
+                    })
 
         # Fix casing for title/position
         if title and (is_all_caps(title) or is_all_lower(title)):
