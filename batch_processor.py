@@ -54,6 +54,8 @@ def build_update_body(person: dict, changes: list[dict]) -> dict:
         "url": "urls",
         "birthday": "birthdays",
         "event": "events",
+        "notes": "biographies",
+        "note": "biographies",
     }
 
     # Group changes by top-level field

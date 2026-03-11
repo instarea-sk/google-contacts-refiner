@@ -71,16 +71,20 @@ def _process_review_feedback():
                 decision = change.get("decision", "")
                 resource_name = change.get("resourceName")
 
+                # Skip changes with missing metadata (unmatched changeIds)
+                if not change.get("field") and not change.get("reason"):
+                    continue
+
                 # Collect feedback for memory learning (approvals, edits, AND rejections)
                 if decision in ("approved", "edited", "rejected"):
                     dtype_map = {"approved": "approval", "edited": "edit", "rejected": "rejection"}
                     feedback_entries.append({
                         "type": dtype_map[decision],
-                        "ruleCategory": memory.extract_rule_category(change.get("reason", "")),
-                        "field": change.get("field", ""),
-                        "old": change.get("old", ""),
-                        "suggested": change.get("new", ""),
-                        "finalValue": change.get("editedValue") or change.get("new", ""),
+                        "ruleCategory": memory.extract_rule_category(change.get("reason") or ""),
+                        "field": change.get("field") or "",
+                        "old": change.get("old") or "",
+                        "suggested": change.get("new") or "",
+                        "finalValue": change.get("editedValue") or change.get("new") or "",
                         "confidence": change.get("confidence", 0),
                     })
 
@@ -151,6 +155,10 @@ def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
                 continue
 
             update_body, update_fields = result
+
+            if not update_fields:
+                logger.warning(f"Phase 0: Empty update fields for {resource_name}, skipping")
+                continue
 
             # Apply update
             client.update_contact(resource_name, etag, update_body, update_fields)
