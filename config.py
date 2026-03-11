@@ -608,6 +608,10 @@ ACTIVITY_ACCOUNTS = [
     {"email": "peter.fusek@instarea.sk", "token_file": "token_work.json", "secret_name": "work-gmail-refresh-token"},
 ]
 
+# Owner emails — used to detect when the authenticated user's email
+# incorrectly appears on other contacts (e.g. copy-paste errors)
+OWNER_EMAILS = {acct["email"].lower() for acct in ACTIVITY_ACCOUNTS}
+
 INTERACTIONS_CACHE = DATA_DIR / "interactions_cache.json"
 RESCAN_INTERVAL_DAYS = 7  # Skip emails scanned within this many days
 GMAIL_RATE_LIMIT = 2500   # Gmail API requests per minute (generous)

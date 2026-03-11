@@ -775,6 +775,8 @@ def normalize_emails(person: dict) -> list[dict]:
     if not emails:
         return changes
 
+    from config import OWNER_EMAILS
+
     seen_emails = set()
 
     for i, email in enumerate(emails):
@@ -809,6 +811,24 @@ def normalize_emails(person: dict) -> list[dict]:
                 "reason": "duplicate email within contact",
             })
         seen_emails.add(normalized.lower())
+
+    # Owner email check — flag owner's email on non-owner contacts
+    # A contact is considered "owner's own card" if ALL its emails are owner emails
+    all_normalized = [e.get("value", "").lower().strip() for e in emails]
+    non_owner_emails = [e for e in all_normalized if e and e not in OWNER_EMAILS]
+    is_owner_card = len(non_owner_emails) == 0 and len(all_normalized) > 0
+
+    if not is_owner_card:
+        for i, email in enumerate(emails):
+            value = email.get("value", "").lower().strip()
+            if value in OWNER_EMAILS:
+                changes.append({
+                    "field": f"emailAddresses[{i}]",
+                    "old": email.get("value", ""),
+                    "new": "",
+                    "confidence": 0.95,
+                    "reason": f"owner email ({value}) incorrectly on non-owner contact",
+                })
 
     return changes
 

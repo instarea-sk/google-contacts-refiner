@@ -40,6 +40,7 @@ RULE_CATEGORIES = {
     "org_from_email": r"odhadnutá z email|inferred from email|organization.*email",
     "domain_case": r"domain|domén|doména",
     "event_from_note": r"udalosť z poznámky|dátum.*poznámky|from notes|extracted from notes",
+    "owner_email": r"owner email",
 }
 
 # Default empty memory structure

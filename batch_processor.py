@@ -157,7 +157,10 @@ def build_update_body(person: dict, changes: list[dict]) -> dict:
                 # Update existing entry
                 idx = int(index_str)
                 if idx < len(current_data):
-                    if sub_field:
+                    if new_value == "" and not sub_field:
+                        # Empty new without sub_field = remove the entire entry
+                        current_data[idx] = None  # Mark for removal
+                    elif sub_field:
                         current_data[idx][sub_field] = new_value
                     elif array_field == "organizations":
                         current_data[idx]["name"] = new_value
@@ -168,6 +171,8 @@ def build_update_body(person: dict, changes: list[dict]) -> dict:
                     else:
                         current_data[idx]["value"] = new_value
 
+        # Remove entries marked as None (deletions)
+        current_data = [entry for entry in current_data if entry is not None]
         body[top_field] = current_data
 
     return body, ",".join(update_fields)
