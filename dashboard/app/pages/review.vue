@@ -485,7 +485,7 @@ const progressPercent = computed(() => {
         </label>
 
         <div class="ml-auto flex items-center gap-2">
-          <UButtonGroup size="xs">
+          <UFieldGroup size="xs">
             <UButton
               label="Contact"
               :variant="viewMode === 'contact' ? 'solid' : 'ghost'"
@@ -496,7 +496,7 @@ const progressPercent = computed(() => {
               :variant="viewMode === 'rule' ? 'solid' : 'ghost'"
               @click="viewMode = 'rule'"
             />
-          </UButtonGroup>
+          </UFieldGroup>
 
           <template v-if="!isDemo">
             <UButton
