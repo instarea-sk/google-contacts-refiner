@@ -13,6 +13,33 @@ useHead({
     { name: 'twitter:title', content: 'Contact Refiner — AI-Powered Google Contacts Cleanup' },
     { name: 'twitter:description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts.' },
   ],
+  link: [
+    { rel: 'canonical', href: 'https://contactrefiner.com' },
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        'name': 'Contact Refiner',
+        'applicationCategory': 'BusinessApplication',
+        'operatingSystem': 'Web',
+        'url': 'https://contactrefiner.com',
+        'description': 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.',
+        'offers': {
+          '@type': 'Offer',
+          'price': '0',
+          'priceCurrency': 'USD',
+        },
+        'author': {
+          '@type': 'Organization',
+          'name': 'Instarea',
+          'url': 'https://instarea.sk',
+        },
+      }),
+    },
+  ],
 })
 
 const features = [

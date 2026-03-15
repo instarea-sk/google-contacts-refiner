@@ -255,6 +255,41 @@ export async function appendFeedback(entries: FeedbackEntry[]): Promise<void> {
   await appendJsonl('data/feedback.jsonl', entries)
 }
 
+// --- Review Sessions List ---
+
+export async function getAllReviewSessions(): Promise<ReviewSession[]> {
+  return cachedRead('all_review_sessions', async () => {
+    const paths = await findAllFiles('data/review_sessions/', '.json')
+    const sessions: ReviewSession[] = []
+    for (const path of paths) {
+      const session = await readJson<ReviewSession>(path)
+      if (session) sessions.push(session)
+    }
+    // Sort newest first
+    sessions.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    return sessions
+  })
+}
+
+export interface ExportRecord {
+  sessionId: string
+  exportedAt: string
+  changes: unknown[]
+}
+
+export async function getLatestExport(): Promise<{ exportedAt: string; count: number } | null> {
+  return cachedRead('latest_export', async () => {
+    const path = await findLatestFile('data/review_decisions_', '.json')
+    if (!path) return null
+    const data = await readJson<ExportRecord>(path)
+    if (!data) return null
+    return {
+      exportedAt: data.exportedAt,
+      count: Array.isArray(data.changes) ? data.changes.length : 0,
+    }
+  })
+}
+
 // --- Queue Stats API ---
 
 export interface QueueStatsEntry {

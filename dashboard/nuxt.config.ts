@@ -4,6 +4,22 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
   ],
 
+  app: {
+    head: {
+      htmlAttrs: { lang: 'en' },
+      title: 'Contact Refiner — AI-Powered Google Contacts Cleanup',
+      meta: [
+        { name: 'description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.' },
+        { property: 'og:site_name', content: 'Contact Refiner' },
+        { property: 'og:locale', content: 'en_US' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+      ],
+      link: [
+        { rel: 'canonical', href: 'https://contactrefiner.com' },
+      ],
+    },
+  },
+
   colorMode: {
     preference: 'dark',
     fallback: 'dark',

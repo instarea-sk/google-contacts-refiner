@@ -11,6 +11,10 @@ const { data, status, refresh } = useFetch('/api/review')
 const { data: queueStats } = useFetch('/api/queue-stats')
 const showStats = ref(false)
 
+// Session history + last export
+const { data: sessionsData } = useFetch('/api/review/sessions')
+const showHistory = ref(false)
+
 // Session state
 const sessionId = ref('')
 const decisions = ref<Record<string, ReviewDecision>>({})
@@ -178,6 +182,12 @@ function formatFieldShort(field: string): string {
     .replace('emailAddresses', 'emails')
     .replace('.value', '')
     .replace('.formattedValue', '')
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return iso }
 }
 
 function formatFieldName(field: string): string {
@@ -457,6 +467,81 @@ const progressPercent = computed(() => {
           class="h-full bg-primary-500 transition-all duration-300"
           :style="{ width: `${progressPercent}%` }"
         />
+      </div>
+    </div>
+
+    <!-- Decision Counts + Last Export -->
+    <div v-if="sessionStats.total > 0 || sessionsData?.lastExport" class="flex flex-wrap gap-3">
+      <!-- Decision counts -->
+      <div v-if="sessionStats.total > 0" class="flex items-center gap-4 rounded-lg border border-neutral-800 bg-neutral-900/50 px-4 py-2.5">
+        <div class="text-xs text-neutral-400">Decisions</div>
+        <div class="flex items-center gap-1">
+          <span class="text-lg font-semibold text-green-400 tabular-nums">{{ sessionStats.approved }}</span>
+          <span class="text-[10px] text-neutral-600">approved</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-lg font-semibold text-red-400 tabular-nums">{{ sessionStats.rejected }}</span>
+          <span class="text-[10px] text-neutral-600">rejected</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="text-lg font-semibold text-amber-400 tabular-nums">{{ sessionStats.edited }}</span>
+          <span class="text-[10px] text-neutral-600">edited</span>
+        </div>
+        <div v-if="sessionStats.skipped > 0" class="flex items-center gap-1">
+          <span class="text-lg font-semibold text-neutral-500 tabular-nums">{{ sessionStats.skipped }}</span>
+          <span class="text-[10px] text-neutral-600">skipped</span>
+        </div>
+      </div>
+
+      <!-- Last export status -->
+      <div v-if="sessionsData?.lastExport" class="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 px-4 py-2.5">
+        <UIcon name="i-lucide-upload" class="size-3.5 text-neutral-500" />
+        <span class="text-xs text-neutral-400">
+          Last export: {{ formatDate(sessionsData.lastExport.exportedAt) }}
+        </span>
+        <span class="text-xs text-neutral-500">
+          ({{ sessionsData.lastExport.count }} decisions)
+        </span>
+      </div>
+    </div>
+
+    <!-- Session History -->
+    <div v-if="sessionsData?.sessions?.length" class="rounded-lg border border-neutral-800 bg-neutral-900/50">
+      <div
+        class="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-neutral-800/30"
+        @click="showHistory = !showHistory"
+      >
+        <div class="flex items-center gap-2 text-xs text-neutral-400">
+          <UIcon :name="showHistory ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'" class="size-3" />
+          <span>Session History</span>
+          <span class="text-neutral-600">({{ sessionsData.sessions.length }} sessions)</span>
+        </div>
+      </div>
+      <div v-if="showHistory" class="px-3 pb-3">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-neutral-600 border-b border-neutral-800/50">
+              <th class="text-left py-1 font-normal">Date</th>
+              <th class="text-right py-1 font-normal">Total</th>
+              <th class="text-right py-1 font-normal">Approved</th>
+              <th class="text-right py-1 font-normal">Rejected</th>
+              <th class="text-right py-1 font-normal">Edited</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="s in sessionsData.sessions"
+              :key="s.id"
+              class="border-b border-neutral-800/30 text-neutral-400"
+            >
+              <td class="py-1.5">{{ formatDate(s.createdAt) }}</td>
+              <td class="text-right tabular-nums">{{ s.stats.total }}</td>
+              <td class="text-right tabular-nums text-green-400/80">{{ s.stats.approved }}</td>
+              <td class="text-right tabular-nums text-red-400/80">{{ s.stats.rejected }}</td>
+              <td class="text-right tabular-nums text-amber-400/80">{{ s.stats.edited }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
