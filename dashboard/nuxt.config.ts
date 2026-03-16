@@ -30,6 +30,8 @@ export default defineNuxtConfig({
     gcsServiceAccount: process.env.GCS_SERVICE_ACCOUNT || '',
     public: {
       appVersion: process.env.npm_package_version || '0.1.0',
+      buildDate: new Date().toISOString().slice(0, 10),
+      gitSha: process.env.RENDER_GIT_COMMIT?.slice(0, 7) || process.env.GIT_SHA?.slice(0, 7) || '',
     },
   },
 

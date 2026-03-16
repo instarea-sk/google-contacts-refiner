@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StatusResponse } from '~/server/utils/types'
 
-const { data: status, refresh } = useFetch<StatusResponse>('/api/status')
+const { data: status, status: fetchStatus, refresh } = useFetch<StatusResponse>('/api/status')
 
 // Poll every 5s when running
 const pollInterval = ref<ReturnType<typeof setInterval>>()
@@ -48,8 +48,14 @@ function formatTime(iso: string | null) {
       <StatusBadge :status="status?.status ?? 'idle'" />
     </div>
 
+    <!-- Loading -->
+    <div v-if="fetchStatus === 'pending'" class="text-center py-16">
+      <UIcon name="i-lucide-loader" class="size-8 text-neutral-500 mx-auto mb-3 animate-spin" />
+      <p class="text-neutral-500">Loading status...</p>
+    </div>
+
     <!-- Pipeline Diagram -->
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 overflow-x-auto">
+    <div v-if="fetchStatus !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 overflow-x-auto">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-3">
         Pipeline
       </p>
@@ -60,7 +66,7 @@ function formatTime(iso: string | null) {
     </div>
 
     <!-- Progress Bars -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div v-if="fetchStatus !== 'pending'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
         <ProgressBar
           :current="status?.currentBatch ?? 0"
@@ -78,7 +84,7 @@ function formatTime(iso: string | null) {
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div v-if="fetchStatus !== 'pending'" class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatsCard
         label="Applied"
         :value="status?.lastRun.changesApplied ?? 0"
@@ -131,7 +137,7 @@ function formatTime(iso: string | null) {
     </div>
 
     <!-- Last Run Info -->
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
+    <div v-if="fetchStatus !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-3">
         Last Run
       </p>

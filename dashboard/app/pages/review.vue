@@ -326,6 +326,11 @@ async function exportDecisions() {
   }
 }
 
+const progressPercent = computed(() => {
+  if (!allChanges.value.length) return 0
+  return Math.round((sessionStats.value.total / allChanges.value.length) * 100)
+})
+
 // Auto-export when all changes reviewed (100%)
 watch(progressPercent, async (pct) => {
   if (pct === 100 && allChanges.value.length > 0 && !isDemo.value && !exportMessage.value) {
@@ -405,10 +410,7 @@ onUnmounted(() => {
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
 })
 
-const progressPercent = computed(() => {
-  if (!allChanges.value.length) return 0
-  return Math.round((sessionStats.value.total / allChanges.value.length) * 100)
-})
+
 </script>
 
 <template>

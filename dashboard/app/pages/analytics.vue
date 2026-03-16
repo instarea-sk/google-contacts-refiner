@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AnalyticsResponse } from '~/server/utils/types'
 
-const { data } = useFetch<AnalyticsResponse>('/api/analytics')
+const { data, status } = useFetch<AnalyticsResponse>('/api/analytics')
 </script>
 
 <template>
@@ -10,8 +10,14 @@ const { data } = useFetch<AnalyticsResponse>('/api/analytics')
       Analytics
     </h1>
 
+    <!-- Loading -->
+    <div v-if="status === 'pending'" class="text-center py-16">
+      <UIcon name="i-lucide-loader" class="size-8 text-neutral-500 mx-auto mb-3 animate-spin" />
+      <p class="text-neutral-500">Loading analytics...</p>
+    </div>
+
     <!-- Top Stats -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div v-if="status !== 'pending'" class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatsCard
         label="Total Applied"
         :value="data?.totalChanges ?? 0"
@@ -38,7 +44,7 @@ const { data } = useFetch<AnalyticsResponse>('/api/analytics')
       />
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div v-if="status !== 'pending'" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Changes by Field -->
       <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
         <p class="text-xs uppercase tracking-wider text-neutral-500 mb-4">
@@ -81,7 +87,7 @@ const { data } = useFetch<AnalyticsResponse>('/api/analytics')
     </div>
 
     <!-- Daily Runs Timeline -->
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
+    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-4">
         Daily Run History
       </p>
@@ -115,7 +121,7 @@ const { data } = useFetch<AnalyticsResponse>('/api/analytics')
     </div>
 
     <!-- Top Contacts -->
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
+    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-4">
         Top Changed Contacts
       </p>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigResponse } from '~/server/utils/types'
 
-const { data } = useFetch<ConfigResponse>('/api/config')
+const { data, status } = useFetch<ConfigResponse>('/api/config')
 
 const rows = computed(() => {
   if (!data.value) return []
@@ -25,7 +25,13 @@ const rows = computed(() => {
       Config
     </h1>
 
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+    <!-- Loading -->
+    <div v-if="status === 'pending'" class="text-center py-16">
+      <UIcon name="i-lucide-loader" class="size-8 text-neutral-500 mx-auto mb-3 animate-spin" />
+      <p class="text-neutral-500">Loading config...</p>
+    </div>
+
+    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
       <table class="w-full text-sm">
         <thead class="bg-neutral-900/80">
           <tr class="text-left text-neutral-500 uppercase tracking-wider text-xs">
@@ -55,7 +61,7 @@ const rows = computed(() => {
       </table>
     </div>
 
-    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
+    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-3">
         Pipeline Info
       </p>

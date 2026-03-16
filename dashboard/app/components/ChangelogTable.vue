@@ -140,7 +140,13 @@ function formatField(field: string) {
               {{ entry.timestamp?.slice(11, 19) }}
             </td>
           </tr>
-          <tr v-if="entries.length === 0 && status !== 'pending'">
+          <tr v-if="status === 'pending'">
+            <td colspan="5" class="px-4 py-8 text-center">
+              <UIcon name="i-lucide-loader" class="size-6 text-neutral-500 mx-auto mb-2 animate-spin" />
+              <p class="text-neutral-500 text-xs">Loading changelog...</p>
+            </td>
+          </tr>
+          <tr v-else-if="entries.length === 0">
             <td colspan="5" class="px-4 py-8 text-center text-neutral-600">
               No changes found
             </td>

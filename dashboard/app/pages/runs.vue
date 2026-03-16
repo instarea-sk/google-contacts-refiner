@@ -7,7 +7,7 @@ interface PipelineRun {
   errors: string[]
 }
 
-const { data, refresh } = useFetch<PipelineRun[]>('/api/pipeline-runs')
+const { data, status, refresh } = useFetch<PipelineRun[]>('/api/pipeline-runs')
 
 // Auto-refresh every 60s
 const interval = setInterval(refresh, 60_000)
@@ -33,7 +33,13 @@ function formatDate(iso: string): string {
       Pipeline Runs
     </h1>
 
-    <div v-if="data?.length" class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+    <!-- Loading -->
+    <div v-if="status === 'pending'" class="text-center py-16">
+      <UIcon name="i-lucide-loader" class="size-8 text-neutral-500 mx-auto mb-3 animate-spin" />
+      <p class="text-neutral-500">Loading pipeline runs...</p>
+    </div>
+
+    <div v-else-if="data?.length" class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
       <table class="w-full text-xs">
         <thead>
           <tr class="border-b border-neutral-800 text-neutral-500 uppercase tracking-wider">

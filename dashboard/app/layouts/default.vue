@@ -6,9 +6,9 @@ const isDemo = computed(() => !loggedIn.value)
 
 const navItems = [
   { label: 'Status', icon: 'i-lucide-activity', to: '/dashboard' },
+  { label: 'Review', icon: 'i-lucide-check-circle', to: '/review', highlight: true },
   { label: 'Changelog', icon: 'i-lucide-file-diff', to: '/changelog' },
   { label: 'Analytics', icon: 'i-lucide-bar-chart-3', to: '/analytics' },
-  { label: 'Review', icon: 'i-lucide-check-circle', to: '/review' },
   { label: 'Runs', icon: 'i-lucide-play-circle', to: '/runs' },
   { label: 'Config', icon: 'i-lucide-settings', to: '/config' },
 ]
@@ -44,12 +44,17 @@ function isActive(to: string) {
           :key="item.to"
           :to="item.to"
           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
-          :class="isActive(item.to)
-            ? 'bg-primary-500/15 text-primary-400'
-            : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50'"
+          :class="[
+            isActive(item.to)
+              ? 'bg-primary-500/15 text-primary-400'
+              : item.highlight
+                ? 'text-primary-300 hover:text-primary-200 hover:bg-primary-500/10 border border-primary-500/20'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50',
+          ]"
         >
           <UIcon :name="item.icon" class="size-4" />
           {{ item.label }}
+          <span v-if="item.highlight && !isActive(item.to)" class="ml-auto text-[9px] uppercase tracking-wider text-primary-500/60 font-semibold">Action</span>
         </NuxtLink>
       </nav>
 
@@ -79,8 +84,12 @@ function isActive(to: string) {
             Sign in
           </a>
         </div>
-        <div class="text-xs text-neutral-600 px-1">
-          v{{ useRuntimeConfig().public.appVersion }}
+        <div class="text-[10px] text-neutral-600 px-1 space-y-0.5">
+          <div>v{{ useRuntimeConfig().public.appVersion }}</div>
+          <div class="text-neutral-700">
+            {{ useRuntimeConfig().public.buildDate }}
+            <span v-if="useRuntimeConfig().public.gitSha" class="font-mono">{{ useRuntimeConfig().public.gitSha }}</span>
+          </div>
         </div>
       </div>
     </aside>
