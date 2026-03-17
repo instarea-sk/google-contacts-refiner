@@ -137,12 +137,12 @@ async function readAllChangelogs(): Promise<ChangelogLine[]> {
       for (const line of text.split('\n')) {
         try {
           all.push(JSON.parse(line) as ChangelogLine)
-        } catch {
-          // Skip malformed lines
+        } catch (e) {
+          console.warn(`[GCS] Malformed JSON in ${path}: ${(e as Error).message}`)
         }
       }
-    } catch {
-      // Skip unreadable files
+    } catch (e) {
+      console.error(`[GCS] Failed to read changelog ${path}: ${(e as Error).message}`)
     }
   }
   return all
@@ -190,8 +190,15 @@ async function appendJsonl(path: string, entries: unknown[]): Promise<void> {
   try {
     const [content] = await file.download()
     existing = content.toString('utf-8')
-  } catch {
-    // File doesn't exist yet
+  } catch (err: unknown) {
+    // Only proceed if file truly doesn't exist (404)
+    const code = (err as { code?: number })?.code
+    if (code === 404) {
+      // File doesn't exist yet — will create new
+    } else {
+      console.error(`[GCS] appendJsonl(${path}) read failed:`, (err as Error).message)
+      throw err // Don't overwrite existing data on non-404 errors
+    }
   }
 
   await file.save(existing + lines, {

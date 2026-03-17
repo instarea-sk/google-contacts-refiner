@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ConfigResponse } from '~/server/utils/types'
 
-const { data, status } = useFetch<ConfigResponse>('/api/config')
+const { data, status, refresh } = useFetch<ConfigResponse>('/api/config')
 
 const rows = computed(() => {
   if (!data.value) return []
@@ -31,7 +31,14 @@ const rows = computed(() => {
       <p class="text-neutral-500">Loading config...</p>
     </div>
 
-    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
+    <!-- Error -->
+    <div v-else-if="status === 'error'" class="text-center py-16">
+      <UIcon name="i-lucide-alert-triangle" class="size-8 text-red-500 mx-auto mb-3" />
+      <p class="text-red-400">Failed to load data</p>
+      <UButton label="Retry" size="sm" variant="soft" class="mt-3" @click="refresh()" />
+    </div>
+
+    <div v-if="status !== 'pending' && status !== 'error'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 overflow-hidden">
       <table class="w-full text-sm">
         <thead class="bg-neutral-900/80">
           <tr class="text-left text-neutral-500 uppercase tracking-wider text-xs">
@@ -61,7 +68,7 @@ const rows = computed(() => {
       </table>
     </div>
 
-    <div v-if="status !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
+    <div v-if="status !== 'pending' && status !== 'error'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-3">
         Pipeline Info
       </p>

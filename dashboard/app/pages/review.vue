@@ -42,6 +42,7 @@ const focusedIndex = ref(0)
 const isSaving = ref(false)
 const lastSaved = ref<string | null>(null)
 const exportMessage = ref<string | null>(null)
+const saveError = ref<string | null>(null)
 let autoSaveTimer: ReturnType<typeof setTimeout> | undefined
 
 // Initialize session
@@ -306,8 +307,10 @@ async function saveToGCS() {
       },
     })
     lastSaved.value = new Date().toLocaleTimeString()
+    saveError.value = null
   } catch (err) {
     console.error('Failed to save to GCS:', err)
+    saveError.value = 'Failed to save. Check your connection.'
   } finally {
     isSaving.value = false
   }
@@ -323,6 +326,7 @@ async function exportDecisions() {
     exportMessage.value = `Exported ${result.exported} decisions for pipeline processing.`
   } catch (err) {
     console.error('Export failed:', err)
+    exportMessage.value = 'Export failed — please try again.'
   }
 }
 
@@ -426,7 +430,10 @@ onUnmounted(() => {
         </p>
       </div>
       <div v-if="!isDemo" class="flex items-center gap-3">
-        <span v-if="exportMessage" class="text-xs text-green-400">
+        <span v-if="saveError" class="text-xs text-red-400">
+          {{ saveError }}
+        </span>
+        <span v-else-if="exportMessage" class="text-xs text-green-400">
           {{ exportMessage }}
         </span>
         <span v-else-if="lastSaved" class="text-xs text-neutral-600">

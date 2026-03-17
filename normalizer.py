@@ -646,12 +646,21 @@ def normalize_name(person: dict) -> list[dict]:
             family = fixed
 
     # ── Fix diacritics ────────────────────────────────────────────
-    # Lazy-load memory for learned diacritics preferences
+    # Lazy-load memory for learned diacritics preferences (singleton)
+    global _diac_memory_cache
     try:
-        from memory import MemoryManager
-        _diac_memory = MemoryManager()
-    except Exception:
-        _diac_memory = None
+        _diac_memory_cache  # noqa: B018
+    except NameError:
+        _diac_memory_cache = None
+    if _diac_memory_cache is None:
+        try:
+            from memory import MemoryManager
+            _diac_memory_cache = MemoryManager()
+        except Exception as e:
+            import logging
+            logging.warning("Failed to load MemoryManager for diacritics: %s", e)
+            _diac_memory_cache = False  # sentinel: don't retry
+    _diac_memory = _diac_memory_cache if _diac_memory_cache is not False else None
 
     # Given name diacritics: only if surname suggests SK/CZ context
     if given:

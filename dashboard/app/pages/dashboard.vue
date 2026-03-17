@@ -54,6 +54,13 @@ function formatTime(iso: string | null) {
       <p class="text-neutral-500">Loading status...</p>
     </div>
 
+    <!-- Error -->
+    <div v-else-if="fetchStatus === 'error'" class="text-center py-16">
+      <UIcon name="i-lucide-alert-triangle" class="size-8 text-red-500 mx-auto mb-3" />
+      <p class="text-red-400">Failed to load data</p>
+      <UButton label="Retry" size="sm" variant="soft" class="mt-3" @click="refresh()" />
+    </div>
+
     <!-- Pipeline Diagram -->
     <div v-if="fetchStatus !== 'pending'" class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 overflow-x-auto">
       <p class="text-xs uppercase tracking-wider text-neutral-500 mb-3">

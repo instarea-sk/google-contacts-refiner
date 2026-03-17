@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AnalyticsResponse } from '~/server/utils/types'
 
-const { data, status } = useFetch<AnalyticsResponse>('/api/analytics')
+const { data, status, refresh } = useFetch<AnalyticsResponse>('/api/analytics')
 </script>
 
 <template>
@@ -14,6 +14,13 @@ const { data, status } = useFetch<AnalyticsResponse>('/api/analytics')
     <div v-if="status === 'pending'" class="text-center py-16">
       <UIcon name="i-lucide-loader" class="size-8 text-neutral-500 mx-auto mb-3 animate-spin" />
       <p class="text-neutral-500">Loading analytics...</p>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="status === 'error'" class="text-center py-16">
+      <UIcon name="i-lucide-alert-triangle" class="size-8 text-red-500 mx-auto mb-3" />
+      <p class="text-red-400">Failed to load data</p>
+      <UButton label="Retry" size="sm" variant="soft" class="mt-3" @click="refresh()" />
     </div>
 
     <!-- Top Stats -->

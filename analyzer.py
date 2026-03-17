@@ -23,8 +23,9 @@ def _get_memory():
         try:
             from memory import MemoryManager
             _memory = MemoryManager()
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.warning("Failed to load MemoryManager, confidence adjustment disabled: %s", e)
     return _memory
 
 
@@ -192,8 +193,9 @@ def analyze_contact(person: dict, ai_analyzer=None, shared_address_index: dict =
     if ai_analyzer and ai_analyzer.needs_ai_review(changes):
         try:
             changes = ai_analyzer.enhance_analysis(person, changes)
-        except Exception:
-            pass  # Fall back to rule-based changes silently
+        except Exception as e:
+            import logging
+            logging.error("AI enhancement failed for %s: %s", get_display_name(person), e)
 
     # Filter out info-only markers
     actionable_changes = [
