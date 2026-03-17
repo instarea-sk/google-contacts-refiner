@@ -4,7 +4,7 @@ definePageMeta({ layout: false })
 useHead({
   title: 'Contact Refiner — AI-Powered Google Contacts Cleanup',
   meta: [
-    { name: 'description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.' },
+    { name: 'description', content: 'Fix diacritics, formatting, and duplicates in Google Contacts. 26 rule categories, daily automated pipeline, AI review, and a dashboard to approve every change.' },
     { property: 'og:title', content: 'Contact Refiner — AI-Powered Google Contacts Cleanup' },
     { property: 'og:description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.' },
     { property: 'og:type', content: 'website' },
@@ -72,6 +72,12 @@ const features = [
     title: 'Interaction Tracking',
     description: 'Scans Gmail and Calendar to tag contacts with activity year labels (Y2024, Y2025).',
     color: 'text-blue-400',
+  },
+  {
+    icon: 'i-lucide-graduation-cap',
+    title: 'Learning System',
+    description: 'Remembers your review decisions. Rejected changes never come back. Confidence adjusts based on your feedback.',
+    color: 'text-violet-400',
   },
   {
     icon: 'i-lucide-shield-check',
@@ -147,13 +153,13 @@ const steps = [
             <UIcon name="i-lucide-github" class="size-4" />
             View on GitHub
           </a>
-          <a
-            href="#features"
+          <NuxtLink
+            to="/dashboard"
             class="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-neutral-700 hover:border-neutral-600 text-neutral-300 text-sm font-medium transition-colors"
           >
-            Learn more
-            <UIcon name="i-lucide-arrow-down" class="size-4" />
-          </a>
+            <UIcon name="i-lucide-layout-dashboard" class="size-4" />
+            Try Dashboard
+          </NuxtLink>
         </div>
       </div>
 
@@ -167,27 +173,48 @@ const steps = [
             <span class="ml-3 text-[11px] text-neutral-600">terminal</span>
           </div>
           <div class="p-5 text-sm leading-relaxed font-mono">
-            <div class="text-neutral-500">$ pip install google-contacts-refiner</div>
-            <div class="text-neutral-500 mt-2">$ contacts-refiner analyze</div>
+            <div class="text-neutral-500">$ python main.py analyze</div>
             <div class="mt-2">
-              <span class="text-primary-400">Found 2,847 contacts</span>
+              <span class="text-primary-400">Total contacts: 5,551</span>
             </div>
             <div>
-              <span class="text-amber-400">  847 changes detected (26 rule categories)</span>
+              <span class="text-amber-400">  4,331 changes detected (26 rule categories)</span>
             </div>
             <div>
-              <span class="text-cyan-400">  412 HIGH confidence → auto-fixed</span>
+              <span class="text-cyan-400">  1,840 HIGH confidence → auto-fixed</span>
             </div>
             <div>
-              <span class="text-neutral-400">  435 MEDIUM → queued for AI review</span>
+              <span class="text-neutral-400">  394 MEDIUM → queued for review</span>
             </div>
-            <div class="mt-2 text-neutral-500">$ contacts-refiner fix --auto</div>
-            <div class="text-primary-400">  Applied 412 changes in 23s</div>
+            <div class="mt-2 text-neutral-500">$ python main.py fix --auto</div>
+            <div class="text-primary-400">  Applied 1,840 changes in 22s</div>
             <div class="mt-2 text-neutral-600">
               # Review remaining changes at<br>
-              # https://contactrefiner.com/dashboard
+              # https://contactrefiner.com/review
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="py-12 px-6 border-t border-neutral-800/50">
+      <div class="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div>
+          <div class="text-2xl md:text-3xl font-bold text-primary-400 tabular-nums">10,761</div>
+          <div class="text-xs text-neutral-500 mt-1">Changes applied</div>
+        </div>
+        <div>
+          <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">26</div>
+          <div class="text-xs text-neutral-500 mt-1">Rule categories</div>
+        </div>
+        <div>
+          <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">5,551</div>
+          <div class="text-xs text-neutral-500 mt-1">Contacts managed</div>
+        </div>
+        <div>
+          <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">Daily</div>
+          <div class="text-xs text-neutral-500 mt-1">Automated pipeline</div>
         </div>
       </div>
     </section>
