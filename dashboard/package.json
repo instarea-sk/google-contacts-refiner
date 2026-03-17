@@ -10,10 +10,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.16.0",
+    "@google-cloud/storage": "^7.19.0",
     "@iconify-json/lucide": "^1.2.90",
     "@nuxt/ui": "^4.5.1",
-    "nuxt": "^4.3.1",
+    "nuxt": "^4.4.2",
     "nuxt-auth-utils": "^0.5.29",
     "tailwindcss": "^4.2.1"
   },
