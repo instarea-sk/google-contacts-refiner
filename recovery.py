@@ -77,9 +77,12 @@ class RecoveryManager:
         self._save()
 
     def _save(self):
-        """Write checkpoint to file."""
-        with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.checkpoint_data, f, ensure_ascii=False, indent=2)
+        """Write checkpoint to file. Logs errors but does not raise."""
+        try:
+            with open(CHECKPOINT_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.checkpoint_data, f, ensure_ascii=False, indent=2)
+        except OSError as e:
+            print(f"⚠️  Checkpoint save failed ({e}) — progress may be lost on crash")
 
     @staticmethod
     def has_pending_session() -> bool:

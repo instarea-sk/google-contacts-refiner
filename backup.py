@@ -46,6 +46,7 @@ def create_backup(client: PeopleAPIClient) -> Path:
     # ── Fetch group memberships ───────────────────────────────────
     print("   Fetching group members...")
     group_members = {}
+    failed_groups = []
     for g in groups:
         rn = g.get("resourceName", "")
         if rn and g.get("groupType") == "USER_CONTACT_GROUP":
@@ -53,8 +54,13 @@ def create_backup(client: PeopleAPIClient) -> Path:
                 members = client.get_contact_group_members(rn)
                 group_members[rn] = members
             except Exception as e:
-                print(f"   ⚠️  Failed to load members of {g.get('name', rn)}: {e}")
+                name = g.get('name', rn)
+                print(f"   ⚠️  Failed to load members of {name}: {e}")
                 group_members[rn] = []
+                failed_groups.append(name)
+
+    if failed_groups:
+        print(f"   ⚠️  {len(failed_groups)} group(s) have empty membership due to API errors")
 
     # ── Build backup structure ────────────────────────────────────
     backup_data = {
@@ -64,6 +70,7 @@ def create_backup(client: PeopleAPIClient) -> Path:
             "total_groups": len(groups),
             "person_fields": PERSON_FIELDS,
             "version": "1.0",
+            **({"failed_group_fetches": failed_groups} if failed_groups else {}),
         },
         "contacts": contacts,
         "contact_groups": groups,

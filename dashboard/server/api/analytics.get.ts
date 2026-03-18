@@ -1,6 +1,5 @@
-import type { AnalyticsResponse } from '../utils/types'
+import type { AnalyticsResponse, ChangelogEntry } from '../utils/types'
 import {
-  getChangelog,
   getChangelogWithMarkers,
   getAIReviewCheckpoint,
   isBatchMarker,
@@ -20,53 +19,58 @@ function fieldCategory(field: string): string {
 
 export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
   const demo = await isDemoMode(event)
-  const [entries, fullLog, aiCheckpoint] = await Promise.all([
-    getChangelog(),
+  const [fullLog, aiCheckpoint] = await Promise.all([
     getChangelogWithMarkers(),
     getAIReviewCheckpoint(),
   ])
 
-  // By field type
+  // Derive deduplicated entries from full log (avoids duplicate GCS read)
+  const seen = new Set<string>()
+  const entries: ChangelogEntry[] = []
+  for (const line of fullLog) {
+    if (isBatchMarker(line)) continue
+    const e = line as ChangelogEntry
+    const key = `${e.resourceName}|${e.field}|${e.old}|${e.new}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      entries.push(e)
+    }
+  }
+
+  // By field type + confidence in a single pass
   const byField: Record<string, number> = {}
+  const byConfidence = { high: 0, medium: 0, low: 0 }
   for (const e of entries) {
     const cat = fieldCategory(e.field)
     byField[cat] = (byField[cat] ?? 0) + 1
-  }
-
-  // By confidence
-  const byConfidence = { high: 0, medium: 0, low: 0 }
-  for (const e of entries) {
     const c = e.confidence?.toLowerCase()
     if (c === 'high') byConfidence.high++
     else if (c === 'medium') byConfidence.medium++
     else byConfidence.low++
   }
 
-  // Success/failed from batch markers
-  let totalChanges = 0
-  let totalFailed = 0
-  for (const line of fullLog) {
-    if (isBatchMarker(line) && line.type === 'batch_end') {
-      totalChanges += line.success ?? 0
-      totalFailed += line.failed ?? 0
-    }
-  }
-
-  const successRate = totalChanges + totalFailed > 0
-    ? Math.round((totalChanges / (totalChanges + totalFailed)) * 100)
-    : 0
-
-  // Daily runs (group by date)
+  // Aggregate batch markers in a single pass — build daily breakdown + find latest day
   const dailyMap = new Map<string, { changes: number; failed: number }>()
+  let latestDate = ''
   for (const line of fullLog) {
     if (isBatchMarker(line) && line.type === 'batch_end') {
       const date = line.timestamp.slice(0, 10)
+      if (date > latestDate) latestDate = date
       const existing = dailyMap.get(date) ?? { changes: 0, failed: 0 }
       existing.changes += line.success ?? 0
       existing.failed += line.failed ?? 0
       dailyMap.set(date, existing)
     }
   }
+
+  // totalChanges/totalFailed = latest day only (not cumulative across all history)
+  const latestDay = dailyMap.get(latestDate)
+  const totalChanges = latestDay?.changes ?? 0
+  const totalFailed = latestDay?.failed ?? 0
+  const successRate = totalChanges + totalFailed > 0
+    ? Math.round((totalChanges / (totalChanges + totalFailed)) * 100)
+    : 0
+
   const dailyRuns = Array.from(dailyMap.entries())
     .map(([date, stats]) => ({ date, ...stats }))
     .sort((a, b) => a.date.localeCompare(b.date))

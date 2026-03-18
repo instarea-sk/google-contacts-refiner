@@ -55,7 +55,7 @@ function getBucket() {
 
 // In-memory cache with TTL
 const cache = new Map<string, { data: unknown; expires: number }>()
-const CACHE_TTL = 10_000 // 10 seconds
+const CACHE_TTL = 60_000 // 60 seconds — data changes at most once per pipeline run
 
 async function cachedRead<T>(key: string, reader: () => Promise<T>): Promise<T> {
   const cached = cache.get(key)
@@ -278,11 +278,8 @@ export async function appendFeedback(entries: FeedbackEntry[]): Promise<void> {
 export async function getAllReviewSessions(): Promise<ReviewSession[]> {
   return cachedRead('all_review_sessions', async () => {
     const paths = await findAllFiles('data/review_sessions/', '.json')
-    const sessions: ReviewSession[] = []
-    for (const path of paths) {
-      const session = await readJson<ReviewSession>(path)
-      if (session) sessions.push(session)
-    }
+    const results = await Promise.all(paths.map(p => readJson<ReviewSession>(p)))
+    const sessions = results.filter((s): s is ReviewSession => s !== null)
     // Sort newest first
     sessions.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     return sessions

@@ -152,28 +152,39 @@ const categoryOptions = computed(() => {
   ]
 })
 
-// Rule view helpers
+// Rule view helpers — single-pass stats to avoid repeated array filters
+function ruleStats(changes: ReviewChange[]) {
+  let decided = 0
+  let approved = 0
+  const undecided: ReviewChange[] = []
+  for (const c of changes) {
+    const d = decisions.value[c.id]
+    if (d) {
+      decided++
+      if (d.decision === 'approved' || d.decision === 'edited') approved++
+    } else {
+      undecided.push(c)
+    }
+  }
+  return { decided, approved, undecided }
+}
+
 function ruleUndecided(changes: ReviewChange[]): number {
-  return changes.filter(c => !decisions.value[c.id]).length
+  return changes.length - ruleStats(changes).decided
 }
 
 function ruleDecidedCount(changes: ReviewChange[]): number {
-  return changes.filter(c => decisions.value[c.id]).length
+  return ruleStats(changes).decided
 }
 
 function ruleApprovalRate(changes: ReviewChange[]): number | null {
-  const decided = changes.filter(c => decisions.value[c.id])
-  if (decided.length < 1) return null
-  const approved = decided.filter(c => {
-    const d = decisions.value[c.id]
-    return d?.decision === 'approved' || d?.decision === 'edited'
-  }).length
-  return Math.round((approved / decided.length) * 100)
+  const { decided, approved } = ruleStats(changes)
+  if (decided < 1) return null
+  return Math.round((approved / decided) * 100)
 }
 
 function ruleSamples(changes: ReviewChange[]): ReviewChange[] {
-  // Show first 5 undecided, or first 5 overall if all decided
-  const undecided = changes.filter(c => !decisions.value[c.id])
+  const { undecided } = ruleStats(changes)
   return (undecided.length > 0 ? undecided : changes).slice(0, 5)
 }
 

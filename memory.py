@@ -363,8 +363,15 @@ class MemoryManager:
                 if self._migrate_rule_stats(data):
                     self._dirty = True
                 return data
-            except (json.JSONDecodeError, IOError):
-                pass
+            except (json.JSONDecodeError, IOError) as e:
+                # Backup corrupted file before falling back to defaults
+                backup_path = MEMORY_PATH.with_suffix(".corrupted.json")
+                try:
+                    import shutil
+                    shutil.copy2(MEMORY_PATH, backup_path)
+                    print(f"⚠️  memory.json corrupted ({e}), backed up to {backup_path}")
+                except OSError:
+                    print(f"⚠️  memory.json corrupted ({e}), backup failed")
         return dict(_DEFAULT_MEMORY)
 
     @staticmethod

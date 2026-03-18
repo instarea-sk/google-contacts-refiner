@@ -221,8 +221,30 @@ def _process_review_feedback():
             archive_dir = DATA_DIR / "archive"
             archive_dir.mkdir(exist_ok=True)
             archive_path = archive_dir / Path(filepath).name
-            shutil.move(filepath, archive_path)
-            logger.info(f"Phase 0: Archived {filepath} -> {archive_path}")
+            try:
+                shutil.move(filepath, archive_path)
+                logger.info(f"Phase 0: Archived {filepath} -> {archive_path}")
+            except OSError as move_err:
+                # Archive failed — move to failed/ so it doesn't retry forever
+                failed_dir = DATA_DIR / "failed"
+                failed_dir.mkdir(exist_ok=True)
+                failed_path = failed_dir / Path(filepath).name
+                try:
+                    shutil.move(filepath, failed_path)
+                except OSError:
+                    pass
+                logger.error(f"Phase 0: Archive failed for {filepath}: {move_err}, moved to failed/")
+
+        except json.JSONDecodeError as e:
+            # Corrupted JSON — move to failed/ directory to prevent infinite retry
+            failed_dir = DATA_DIR / "failed"
+            failed_dir.mkdir(exist_ok=True)
+            failed_path = failed_dir / Path(filepath).name
+            try:
+                shutil.move(filepath, failed_path)
+            except OSError:
+                pass
+            logger.error(f"Phase 0: Corrupt decision file {filepath}: {e}, moved to failed/")
 
         except Exception as e:
             logger.error(f"Phase 0: Failed to process {filepath}: {e}")

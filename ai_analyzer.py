@@ -58,6 +58,7 @@ class AIAnalyzer:
         self._total_input_tokens = 0
         self._total_output_tokens = 0
         self._estimated_cost = 0.0
+        self._cost_limit_hit = False
 
     # ── Public API ────────────────────────────────────────────────
 
@@ -432,6 +433,9 @@ Rules:
     def _is_cost_exceeded(self) -> bool:
         """Check if session cost limit has been reached."""
         if self._estimated_cost >= AI_COST_LIMIT_PER_SESSION:
+            if not self._cost_limit_hit:
+                print(f"   ⚠️  AI cost limit reached (${self._estimated_cost:.2f} >= ${AI_COST_LIMIT_PER_SESSION:.2f}), skipping remaining AI reviews")
+                self._cost_limit_hit = True
             return True
         return False
 

@@ -35,11 +35,14 @@ export default defineEventHandler(async (): Promise<StatusResponse> => {
     phase = 'phase2'
   }
 
-  // Count successes/failures from batch markers
+  // Count successes/failures from batch markers — latest session only
+  // (without session filtering, these sum ALL historical runs → misleading)
+  const currentSessionId = checkpoint?.session_id ?? null
   let changesApplied = 0
   let changesFailed = 0
   for (const entry of changelog) {
     if (isBatchMarker(entry) && entry.type === 'batch_end') {
+      if (currentSessionId && entry.session_id !== currentSessionId) continue
       changesApplied += entry.success ?? 0
       changesFailed += entry.failed ?? 0
     }

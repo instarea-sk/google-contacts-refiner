@@ -26,6 +26,19 @@ from utils import (
 )
 
 
+# Pre-compiled prefix patterns (avoid re-compiling ~21 patterns per call)
+_PREFIX_PATTERNS: list[tuple[str, re.Pattern, re.Pattern]] = sorted(
+    [
+        (
+            p,
+            re.compile(r'^' + re.escape(p) + r'[\s,]+', re.IGNORECASE),
+            re.compile(r',?\s*' + re.escape(p) + r'\.?\s*$', re.IGNORECASE),
+        )
+        for p in NAME_PREFIXES
+    ],
+    key=lambda x: -len(x[0]),  # longest first
+)
+
 # ══════════════════════════════════════════════════════════════════════
 # NAME NORMALIZATION
 # ══════════════════════════════════════════════════════════════════════
@@ -93,21 +106,14 @@ def extract_prefix(full_name: str) -> tuple[str, str]:
     prefixes_found = []
     remaining = full_name.strip()
 
-    # Sort prefixes by length (longest first) to avoid partial matches
-    sorted_prefixes = sorted(NAME_PREFIXES, key=len, reverse=True)
-
-    for prefix in sorted_prefixes:
-        # Check at start of string
-        pattern = re.compile(r'^' + re.escape(prefix) + r'[\s,]+', re.IGNORECASE)
-        match = pattern.match(remaining)
+    for prefix, start_re, end_re in _PREFIX_PATTERNS:
+        match = start_re.match(remaining)
         if match:
             prefixes_found.append(prefix)
             remaining = remaining[match.end():].strip()
             continue
 
-        # Check with comma separation
-        pattern2 = re.compile(r',?\s*' + re.escape(prefix) + r'\.?\s*$', re.IGNORECASE)
-        match2 = pattern2.search(remaining)
+        match2 = end_re.search(remaining)
         if match2:
             prefixes_found.append(prefix)
             remaining = remaining[:match2.start()].strip()
