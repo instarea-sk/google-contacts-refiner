@@ -1,4 +1,11 @@
 <script setup lang="ts">
+useHead({
+  title: 'Analytics — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'Contact cleanup analytics: changes by field type, confidence distribution, success rates, daily trends, and top modified contacts.' },
+  ],
+})
+
 import type { AnalyticsResponse } from '~/server/utils/types'
 
 const { data, status, refresh } = useFetch<AnalyticsResponse>('/api/analytics')

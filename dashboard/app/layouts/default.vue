@@ -53,9 +53,7 @@ watch(() => route.path, () => {
     >
       <!-- Header -->
       <div class="flex items-center gap-2 p-4 border-b border-neutral-800/50">
-        <div class="size-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
-          <UIcon name="i-lucide-radar" class="size-5 text-primary-400" />
-        </div>
+        <img src="/favicon.svg" alt="Contact Refiner" class="size-8" />
         <div class="min-w-0">
           <p class="text-sm font-semibold text-primary-400 truncate">
             Mission Control

@@ -1,0 +1,35 @@
+# Contact Refiner
+
+> Open-source AI-powered tool that automatically fixes diacritics, formatting, and duplicates in Google Contacts. Runs a daily pipeline with 26 rule categories, Claude AI review for ambiguous cases, and a web dashboard where you approve every change before it applies. 22,000+ changes applied across 5,500+ contacts.
+
+Contact Refiner is built for people who manage large Google Contacts databases, especially with Slovak and Czech names that need proper diacritical marks. It combines rule-based analysis with AI judgment, a learning system that remembers your review decisions, and a daily email digest.
+
+## Key Pages
+
+- [Home](https://contactrefiner.com): Landing page with features, stats, and how it works
+- [Dashboard](https://contactrefiner.com/dashboard): Pipeline status, current batch progress, last run stats
+- [Review](https://contactrefiner.com/review): Review and approve pending contact changes with bulk actions
+- [Analytics](https://contactrefiner.com/analytics): Change breakdown by field type, confidence, and daily trends
+- [Changelog](https://contactrefiner.com/changelog): Full history of all changes applied to contacts
+- [Pipeline Runs](https://contactrefiner.com/runs): History of automated pipeline executions
+- [Privacy Policy](https://contactrefiner.com/privacy): Data handling and privacy information
+
+## Features
+
+- [Diacritics Restoration](https://contactrefiner.com/#features): Context-aware Slovak/Czech name accent restoration
+- [Smart Formatting](https://contactrefiner.com/#features): Phone number, title, and name casing normalization
+- [Contact Cleanup](https://contactrefiner.com/#features): Flags low-value contacts with missing data
+- [AI Review](https://contactrefiner.com/#features): Claude AI catches edge cases that rules miss
+- [Learning System](https://contactrefiner.com/#features): Remembers review decisions, adjusts confidence
+- [Daily Email Digest](https://contactrefiner.com/#features): Morning summary of overnight pipeline results
+- [Interaction Tracking](https://contactrefiner.com/#features): Gmail/Calendar activity tagging
+- [Privacy First](https://contactrefiner.com/#features): Self-hosted, contacts never leave your Google account
+
+## Technical
+
+- [GitHub Repository](https://github.com/instarea-sk/google-contacts-refiner): Source code, issues, and documentation
+- [API](https://contactrefiner.com/api): REST API for dashboard data (auth-protected)
+
+## Optional
+
+- [Configuration](https://contactrefiner.com/config): Pipeline configuration and environment details

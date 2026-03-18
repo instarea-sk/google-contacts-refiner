@@ -9,9 +9,13 @@ useHead({
     { property: 'og:description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.' },
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: 'https://contactrefiner.com' },
+    { property: 'og:image', content: 'https://contactrefiner.com/og-image.png' },
+    { property: 'og:image:width', content: '1200' },
+    { property: 'og:image:height', content: '630' },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: 'Contact Refiner — AI-Powered Google Contacts Cleanup' },
     { name: 'twitter:description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts.' },
+    { name: 'twitter:image', content: 'https://contactrefiner.com/og-image.png' },
   ],
   link: [
     { rel: 'canonical', href: 'https://contactrefiner.com' },
@@ -21,22 +25,37 @@ useHead({
       type: 'application/ld+json',
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
-        '@type': 'SoftwareApplication',
-        'name': 'Contact Refiner',
-        'applicationCategory': 'BusinessApplication',
-        'operatingSystem': 'Web',
-        'url': 'https://contactrefiner.com',
-        'description': 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. 22,000+ changes applied. AI-powered analysis with human review and daily email digest.',
-        'offers': {
-          '@type': 'Offer',
-          'price': '0',
-          'priceCurrency': 'USD',
-        },
-        'author': {
-          '@type': 'Organization',
-          'name': 'Instarea',
-          'url': 'https://instarea.sk',
-        },
+        '@graph': [
+          {
+            '@type': 'WebSite',
+            'name': 'Contact Refiner',
+            'url': 'https://contactrefiner.com',
+            'description': 'AI-powered Google Contacts cleanup tool',
+            'publisher': { '@id': 'https://contactrefiner.com/#organization' },
+          },
+          {
+            '@type': 'Organization',
+            '@id': 'https://contactrefiner.com/#organization',
+            'name': 'Instarea',
+            'url': 'https://instarea.sk',
+            'sameAs': ['https://github.com/instarea-sk'],
+          },
+          {
+            '@type': 'SoftwareApplication',
+            'name': 'Contact Refiner',
+            'applicationCategory': 'BusinessApplication',
+            'operatingSystem': 'Web',
+            'url': 'https://contactrefiner.com',
+            'description': 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. 22,000+ changes applied across 5,500+ contacts. AI-powered analysis with human review and daily email digest.',
+            'offers': {
+              '@type': 'Offer',
+              'price': '0',
+              'priceCurrency': 'USD',
+            },
+            'author': { '@id': 'https://contactrefiner.com/#organization' },
+            'featureList': 'Diacritics restoration, Smart formatting, Contact cleanup, AI review, Learning system, Daily email digest, Interaction tracking, Privacy-first self-hosted',
+          },
+        ],
       }),
     },
   ],
@@ -106,9 +125,7 @@ const steps = [
     <nav class="fixed top-0 inset-x-0 z-50 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur-lg">
       <div class="max-w-5xl mx-auto flex items-center justify-between px-6 h-14">
         <div class="flex items-center gap-2">
-          <div class="size-8 rounded-lg bg-primary-500/20 flex items-center justify-center">
-            <UIcon name="i-lucide-radar" class="size-5 text-primary-400" />
-          </div>
+          <img src="/favicon.svg" alt="Contact Refiner" class="size-8" />
           <span class="text-sm font-semibold text-primary-400">Contact Refiner</span>
         </div>
         <div class="flex items-center gap-4">

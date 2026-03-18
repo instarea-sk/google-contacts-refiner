@@ -1,4 +1,10 @@
 <script setup lang="ts">
+useHead({
+  title: 'Changelog — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'Full history of all changes applied to your Google Contacts. Track every diacritics fix, formatting correction, and cleanup action.' },
+  ],
+})
 </script>
 
 <template>

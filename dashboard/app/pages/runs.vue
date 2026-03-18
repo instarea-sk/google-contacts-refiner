@@ -1,4 +1,11 @@
 <script setup lang="ts">
+useHead({
+  title: 'Pipeline Runs — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'History of automated pipeline executions. View duration, phases completed, queue sizes, and errors for each daily run.' },
+  ],
+})
+
 interface PipelineRun {
   date: string
   duration_seconds: number

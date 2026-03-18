@@ -1,4 +1,11 @@
 <script setup lang="ts">
+useHead({
+  title: 'Configuration — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'Pipeline configuration: environment settings, batch size, confidence thresholds, AI model, and rule categories.' },
+  ],
+})
+
 import type { ConfigResponse } from '~/server/utils/types'
 
 const { data, status, refresh } = useFetch<ConfigResponse>('/api/config')

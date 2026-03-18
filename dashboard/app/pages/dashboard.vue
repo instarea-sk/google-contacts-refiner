@@ -1,4 +1,11 @@
 <script setup lang="ts">
+useHead({
+  title: 'Pipeline Status — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'Monitor your Google Contacts cleanup pipeline. View current batch progress, changes applied, failures, and AI review status.' },
+  ],
+})
+
 import type { StatusResponse } from '~/server/utils/types'
 
 const { data: status, status: fetchStatus, refresh } = useFetch<StatusResponse>('/api/status')

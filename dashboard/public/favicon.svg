@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Unrefined person silhouette - gray, top -->
+  <circle cx="16" cy="5.5" r="3.5" fill="#94a3b8"/>
+  <path d="M9 13.5a7 7 0 0 1 14 0" fill="#94a3b8"/>
+  <!-- Refinery funnel - emerald green -->
+  <polygon points="5,16 27,16 20,27 12,27" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Refined output - bright emerald drop -->
+  <circle cx="16" cy="30" r="2" fill="#10b981"/>
+</svg>

@@ -12,10 +12,15 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Automatically fix diacritics, formatting, and duplicates in your Google Contacts. AI-powered analysis with human review.' },
         { property: 'og:site_name', content: 'Contact Refiner' },
         { property: 'og:locale', content: 'en_US' },
+        { property: 'og:image', content: 'https://contactrefiner.com/og-image.png' },
         { name: 'twitter:card', content: 'summary_large_image' },
       ],
       link: [
         { rel: 'canonical', href: 'https://contactrefiner.com' },
+      ],
+      script: [
+        { src: 'https://www.googletagmanager.com/gtag/js?id=G-FP5LSJKP30', async: true },
+        { innerHTML: "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-FP5LSJKP30');" },
       ],
     },
   },

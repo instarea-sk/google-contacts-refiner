@@ -1,4 +1,11 @@
 <script setup lang="ts">
+useHead({
+  title: 'Review Changes — Contact Refiner',
+  meta: [
+    { name: 'description', content: 'Review and approve pending contact changes. Bulk approve or reject diacritics fixes, formatting corrections, and cleanup suggestions.' },
+  ],
+})
+
 import type { ReviewChange, ReviewDecision, ReviewSession } from '~/server/utils/types'
 
 const { loggedIn } = useUserSession()
