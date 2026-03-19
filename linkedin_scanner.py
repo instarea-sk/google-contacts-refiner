@@ -37,6 +37,10 @@ MAX_PROFILES_PER_SESSION = 50
 
 # LinkedIn URL patterns
 LINKEDIN_PROFILE_RE = re.compile(r"linkedin\.com/in/([a-zA-Z0-9_-]+)", re.IGNORECASE)
+LINKEDIN_OLD_PUB_RE = re.compile(r"linkedin\.com/pub/", re.IGNORECASE)
+
+# URLs with percent-encoded diacritics or /pub/ format are often broken
+BROKEN_URL_INDICATORS = ["%C4%", "%C5%", "%C3%", "/pub/"]
 
 
 class LinkedInScanner:
@@ -365,6 +369,22 @@ class LinkedInScanner:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────
+
+def is_likely_broken_url(url: str) -> bool:
+    """Check if a LinkedIn URL is likely broken (old format or diacritics in slug)."""
+    if not url:
+        return False
+    return any(indicator in url for indicator in BROKEN_URL_INDICATORS)
+
+
+def build_google_search_url(name: str, company: str = "") -> str:
+    """Build a Google search URL to find a LinkedIn profile."""
+    from urllib.parse import quote_plus
+    query = f'site:linkedin.com/in/ "{name}"'
+    if company:
+        query += f' "{company}"'
+    return f"https://www.google.com/search?q={quote_plus(query)}"
+
 
 def _days_ago(n: int) -> str:
     """Return ISO date string for N days ago."""
