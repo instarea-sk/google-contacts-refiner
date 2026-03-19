@@ -64,6 +64,7 @@ class LinkedInScanner:
         self,
         ltns_list: Optional[list[dict]] = None,
         limit: int = 100,
+        group_members: Optional[set[str]] = None,
     ) -> list[dict]:
         """
         Select contacts to scan. Prioritizes LTNS contacts with LinkedIn URLs,
@@ -112,12 +113,16 @@ class LinkedInScanner:
                 })
                 seen_rn.add(rn)
 
-        # Priority 2: Any contact with LinkedIn URL not in LTNS
+        # Priority 2: Contacts with LinkedIn URL (filtered by group if specified)
         for contact in self.contacts:
             if len(targets) >= limit:
                 break
             rn = get_resource_name(contact)
             if rn in seen_rn:
+                continue
+
+            # If group filter active, skip contacts not in those groups
+            if group_members is not None and rn not in group_members:
                 continue
 
             linkedin_url = None
@@ -146,7 +151,7 @@ class LinkedInScanner:
                 "linkedin_url": linkedin_url,
                 "org": org,
                 "title": title,
-                "source": "contact_url",
+                "source": "group" if group_members else "contact_url",
                 "months_gap": 0,
             })
             seen_rn.add(rn)

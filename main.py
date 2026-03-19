@@ -1074,8 +1074,8 @@ def cmd_ltns(skip_scan=False, dry_run=False, no_prompts=False):
     print(f"   List saved: {ltns_path}")
 
 
-def cmd_linkedin_scan(skip_scan=False, dry_run=False, limit=100):
-    """Scan LinkedIn profiles of LTNS contacts for social signals."""
+def cmd_linkedin_scan(skip_scan=False, dry_run=False, limit=100, groups=None):
+    """Scan LinkedIn profiles for social signals. Supports group-based filtering."""
     from config import ACTIVITY_ACCOUNTS
     from auth import authenticate, authenticate_for_activity
     from interaction_scanner import InteractionScanner
@@ -1103,9 +1103,28 @@ def cmd_linkedin_scan(skip_scan=False, dry_run=False, limit=100):
     print(f"   Total contacts: {len(contacts)}")
     print()
 
-    # Step 2: Get LTNS list (reuse interaction scanner)
+    # Step 2a: Group-based filtering (if --groups specified)
+    group_members = None
+    if groups:
+        group_names = [g.strip() for g in groups.split(",")]
+        print(f"🏷️  Filtering by groups: {', '.join(group_names)}")
+        all_groups = client.get_all_contact_groups()
+        group_members = set()
+        for grp in all_groups:
+            if grp.get("name") in group_names or grp.get("formattedName") in group_names:
+                grp_rn = grp["resourceName"]
+                members = client.get_contact_group_members(grp_rn)
+                print(f"   {grp.get('name', grp.get('formattedName'))}: {len(members)} members")
+                group_members.update(members)
+        print(f"   Total unique members: {len(group_members)}")
+        print()
+
+    # Step 2b: Get LTNS list (skip if group filtering active)
     ltns_list = []
-    if not skip_scan:
+    if groups:
+        print("   Skipping LTNS scan (group filter active)")
+        print()
+    elif not skip_scan:
         # Scan interactions to identify LTNS candidates
         account_credentials = []
         for account in ACTIVITY_ACCOUNTS:
@@ -1145,7 +1164,7 @@ def cmd_linkedin_scan(skip_scan=False, dry_run=False, limit=100):
 
     # Step 3: Select targets
     li_scanner = LinkedInScanner(contacts)
-    targets = li_scanner.select_targets(ltns_list=ltns_list, limit=limit)
+    targets = li_scanner.select_targets(ltns_list=ltns_list, limit=limit, group_members=group_members)
 
     if not targets:
         print("ℹ️  No targets found for LinkedIn scanning.")
@@ -1261,6 +1280,7 @@ def main():
     parser.add_argument("--csv", type=str, help="Path to LinkedIn Connections.csv (for linkedin-match)")
     parser.add_argument("--limit", type=int, default=100, help="Max profiles to scan (for linkedin-scan)")
     parser.add_argument("--write-notes", action="store_true", help="Write cached scan results to notes (for linkedin-scan)")
+    parser.add_argument("--groups", type=str, help="Comma-separated group names to filter targets (for linkedin-scan, e.g. Y2025,Y2026)")
 
     args = parser.parse_args()
 
@@ -1307,6 +1327,7 @@ def main():
                 skip_scan=args.skip_scan,
                 dry_run=args.dry_run,
                 limit=args.limit,
+                groups=args.groups,
             )
         elif command == "ltns":
             cmd_ltns(
