@@ -19,6 +19,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from rapidfuzz import fuzz
+from unidecode import unidecode
+
 from api_client import PeopleAPIClient
 from config import DATA_DIR
 from utils import get_display_name, get_resource_name
@@ -384,6 +387,53 @@ def build_google_search_url(name: str, company: str = "") -> str:
     if company:
         query += f' "{company}"'
     return f"https://www.google.com/search?q={quote_plus(query)}"
+
+
+def verify_name_match(expected_name: str, profile_name: str, threshold: int = 70) -> bool:
+    """
+    Verify that a LinkedIn profile name matches the expected contact name.
+    Uses fuzzy matching to handle name order, diacritics, and abbreviations.
+    """
+    if not expected_name or not profile_name:
+        return False
+
+    # Normalize: strip diacritics, lowercase, strip extra whitespace
+    e = unidecode(expected_name).lower().strip()
+    p = unidecode(profile_name).lower().strip()
+
+    # Direct fuzzy match
+    if fuzz.ratio(e, p) >= threshold:
+        return True
+
+    # Token sort handles name order (Family Given vs Given Family)
+    if fuzz.token_sort_ratio(e, p) >= threshold:
+        return True
+
+    return False
+
+
+def normalize_linkedin_url(url: str) -> str:
+    """
+    Normalize a LinkedIn URL: convert /pub/ to /in/ format,
+    ensure https, strip tracking params.
+    """
+    if not url:
+        return url
+
+    # Ensure https
+    url = re.sub(r'^http://', 'https://', url)
+
+    # /pub/ URLs can sometimes redirect to /in/ — extract the slug
+    pub_match = re.search(r'linkedin\.com/pub/([^/?]+)', url)
+    if pub_match:
+        slug = pub_match.group(1)
+        # /pub/ slugs often have format: first-last/xx/xxx/xxx
+        # The /in/ equivalent drops the trailing segments
+        slug_parts = slug.split('/')
+        if slug_parts:
+            return f"https://www.linkedin.com/in/{slug_parts[0]}"
+
+    return url
 
 
 def _days_ago(n: int) -> str:
