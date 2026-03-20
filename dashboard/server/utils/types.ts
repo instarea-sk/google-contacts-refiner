@@ -198,6 +198,39 @@ export interface AnalyticsResponse {
   estimatedCost: number
 }
 
+// --- LinkedIn Social Signals ---
+
+export interface LinkedInSignal {
+  resourceName: string
+  name: string
+  linkedin_url: string
+  scanned_at: string
+  headline: string
+  current_role: string
+  recent_activity: string[]
+  signal_type: 'job_change' | 'active' | 'profile' | 'no_activity'
+  signal_text: string
+}
+
+export interface LinkedInSignalsFile {
+  generated: string
+  count: number
+  signals: Record<string, LinkedInSignal>
+}
+
+export interface LinkedInSignalsResponse {
+  signals: LinkedInSignal[]
+  stats: {
+    total: number
+    jobChanges: number
+    active: number
+    profiles: number
+    generated: string | null
+  }
+}
+
+// --- Config ---
+
 export interface ConfigResponse {
   batchSize: number
   confidenceHigh: number

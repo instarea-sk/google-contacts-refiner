@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { ChangelogEntry, ReviewChange } from './types'
+import type { ChangelogEntry, ReviewChange, LinkedInSignal } from './types'
 
 /**
  * Check if the current request is in demo mode (unauthenticated visitor).
@@ -142,6 +142,22 @@ export function maskReviewChange(change: ReviewChange): ReviewChange {
 /**
  * Mask PII in analytics top contacts.
  */
+/**
+ * Mask PII in a LinkedIn signal.
+ */
+export function maskLinkedInSignal(signal: LinkedInSignal): LinkedInSignal {
+  const nameParts = (signal.name || '').trim().split(/\s+/)
+  if (nameParts.length > 1) {
+    nameParts[nameParts.length - 1] = nameParts[nameParts.length - 1]!.charAt(0).toUpperCase() + '.'
+  }
+  return {
+    ...signal,
+    resourceName: '***',
+    name: nameParts.join(' '),
+    linkedin_url: 'https://www.linkedin.com/in/***',
+  }
+}
+
 export function maskTopContact(contact: { name: string; changes: number }): { name: string; changes: number } {
   return { name: '***', changes: contact.changes }
 }

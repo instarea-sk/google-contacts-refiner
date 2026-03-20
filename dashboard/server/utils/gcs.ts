@@ -337,6 +337,21 @@ export async function getPipelineRuns(): Promise<PipelineRun[]> {
   })
 }
 
+// --- LinkedIn Signals API ---
+
+import type { LinkedInSignalsFile, LinkedInSignal } from './types'
+
+export async function getLinkedInSignals(): Promise<{ signals: LinkedInSignal[]; generated: string | null }> {
+  return cachedRead('linkedin_signals', async () => {
+    const data = await readJson<LinkedInSignalsFile>('data/linkedin_signals.json')
+    if (!data) return { signals: [], generated: null }
+    return {
+      signals: Object.values(data.signals),
+      generated: data.generated,
+    }
+  })
+}
+
 // --- Cost Estimation ---
 
 /** Estimate AI review cost (Haiku: ~$0.80/1M input, $4/1M output, ~500 tokens/review) */
