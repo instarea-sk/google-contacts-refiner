@@ -87,9 +87,9 @@ const features = [
     color: 'text-amber-400',
   },
   {
-    icon: 'i-lucide-mail',
-    title: 'Interaction Tracking',
-    description: 'Scans Gmail and Calendar to tag contacts with activity year labels (Y2024, Y2025).',
+    icon: 'i-lucide-radar',
+    title: 'LinkedIn Social Signals',
+    description: 'Scans LinkedIn profiles to detect job changes and reconnection opportunities. 67% job change rate across 105 contacts.',
     color: 'text-blue-400',
   },
   {
@@ -152,7 +152,7 @@ const steps = [
       <div class="max-w-3xl mx-auto text-center space-y-6">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neutral-800 bg-neutral-900/50 text-xs text-neutral-400">
           <span class="size-1.5 rounded-full bg-primary-400 animate-pulse-glow" />
-          Open source · Security audited · 22,000+ changes applied
+          Open source · Security audited · 22,000+ changes · 105 LinkedIn signals
         </div>
 
         <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-neutral-100 leading-tight">
@@ -162,7 +162,7 @@ const steps = [
 
         <p class="text-lg text-neutral-400 max-w-xl mx-auto leading-relaxed">
           Contact Refiner automatically fixes diacritics, formatting, and duplicates
-          in your Google Contacts. 26 rule categories + Claude AI review + daily email digest.
+          in your Google Contacts. 26 rule categories + Claude AI review + LinkedIn signals + daily email digest.
           You approve every change.
         </p>
 
@@ -211,9 +211,11 @@ const steps = [
             </div>
             <div class="mt-2 text-neutral-500">$ python main.py fix --auto</div>
             <div class="text-primary-400">  Applied 2,140 changes in 28s</div>
+            <div class="mt-2 text-neutral-500">$ python main.py linkedin-scan</div>
+            <div class="text-cyan-400">  105 profiles scanned → 70 job changes (67%)</div>
             <div class="mt-2 text-neutral-600">
-              # Review remaining changes at<br>
-              # https://contactrefiner.com/review
+              # Review at https://contactrefiner.com/review<br>
+              # Signals at https://contactrefiner.com/social-signals
             </div>
           </div>
         </div>
@@ -222,22 +224,26 @@ const steps = [
 
     <!-- Stats -->
     <section class="py-12 px-6 border-t border-neutral-800/50">
-      <div class="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      <div class="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-6 text-center">
         <div>
           <div class="text-2xl md:text-3xl font-bold text-primary-400 tabular-nums">22,189</div>
-          <div class="text-xs text-neutral-500 mt-1">Changes applied</div>
+          <div class="label-refined mt-1">Changes applied</div>
         </div>
         <div>
           <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">6,400+</div>
-          <div class="text-xs text-neutral-500 mt-1">Review decisions</div>
+          <div class="label-refined mt-1">Review decisions</div>
         </div>
         <div>
           <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">5,551</div>
-          <div class="text-xs text-neutral-500 mt-1">Contacts managed</div>
+          <div class="label-refined mt-1">Contacts managed</div>
+        </div>
+        <div>
+          <div class="text-2xl md:text-3xl font-bold text-cyan-400 tabular-nums">105</div>
+          <div class="label-refined mt-1">LinkedIn signals</div>
         </div>
         <div>
           <div class="text-2xl md:text-3xl font-bold text-neutral-100 tabular-nums">26</div>
-          <div class="text-xs text-neutral-500 mt-1">Rule categories</div>
+          <div class="label-refined mt-1">Rule categories</div>
         </div>
       </div>
     </section>
@@ -256,9 +262,10 @@ const steps = [
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <div
-            v-for="feature in features"
+            v-for="(feature, i) in features"
             :key="feature.title"
-            class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 space-y-3 hover:border-neutral-700 card-hover"
+            class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 space-y-3 hover:border-neutral-700 card-hover animate-fade-in"
+            :style="{ animationDelay: `${i * 60}ms` }"
           >
             <UIcon :name="feature.icon" :class="['size-6', feature.color]" />
             <h3 class="text-sm font-semibold text-neutral-100">{{ feature.title }}</h3>
