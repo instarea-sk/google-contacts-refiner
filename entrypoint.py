@@ -278,6 +278,7 @@ def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
     from batch_processor import build_update_body
     from changelog import ChangeLog
     from utils import get_etag
+    from googleapiclient.errors import HttpError
 
     creds = authenticate()
     client = PeopleAPIClient(creds)
@@ -287,6 +288,7 @@ def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
     total_contacts = len(changes_by_contact)
     applied = 0
     failed = 0
+    skipped = 0
 
     logger.info(f"Phase 0: Applying review changes to {total_contacts} contacts")
     changelog.log_batch_start(0, total_contacts)
@@ -294,7 +296,15 @@ def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
     for resource_name, changes in changes_by_contact.items():
         try:
             # Fetch fresh contact data for current etag
-            person = client.get_contact(resource_name)
+            try:
+                person = client.get_contact(resource_name)
+            except HttpError as e:
+                status = e.resp.status if e.resp else 0
+                if status == 404:
+                    logger.info(f"Phase 0: Contact {resource_name} no longer exists (already deleted), skipping")
+                    skipped += 1
+                    continue
+                raise
             etag = get_etag(person)
 
             # Build update payload
@@ -330,11 +340,31 @@ def _apply_review_changes(changes_by_contact: dict[str, list[dict]]):
             failed += 1
 
     changelog.log_batch_end(0, applied, failed)
-    logger.info(f"Phase 0: Applied review changes — {applied} ok, {failed} failed")
+    logger.info(f"Phase 0: Applied review changes — {applied} ok, {failed} failed, {skipped} skipped (contact deleted)")
+
+
+def _check_pause_flag() -> bool:
+    """Check if pipeline is paused via dashboard emergency stop."""
+    try:
+        from config import DATA_DIR
+        pause_file = DATA_DIR / "pipeline_paused.json"
+        if pause_file.exists():
+            import json
+            data = json.loads(pause_file.read_text())
+            if data.get("paused"):
+                logger.warning("Pipeline is PAUSED (emergency stop from dashboard at %s). Exiting.", data.get("pausedAt", "?"))
+                return True
+    except Exception as e:
+        logger.warning("Failed to check pause flag: %s", e)
+    return False
 
 
 def run():
     """Execute the contacts refiner pipeline."""
+    # Check emergency stop flag before doing anything
+    if _check_pause_flag():
+        return
+
     start = datetime.now()
     dry_run = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
     skip_ai = os.getenv("SKIP_AI_REVIEW", "").lower() in ("1", "true", "yes")

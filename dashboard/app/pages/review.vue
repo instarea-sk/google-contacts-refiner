@@ -796,7 +796,7 @@ onUnmounted(() => {
                     target="_blank"
                     rel="noopener"
                     class="text-neutral-600 hover:text-neutral-400"
-                    title="View in Google Contacts"
+                    title="View in Google Contacts (may show 'not found' if already deleted)"
                   >
                     <UIcon name="i-lucide-external-link" class="size-3.5" />
                   </a>
@@ -843,7 +843,7 @@ onUnmounted(() => {
                     target="_blank"
                     rel="noopener"
                     class="text-neutral-600 hover:text-neutral-400"
-                    title="View in Google Contacts"
+                    title="View in Google Contacts (may show 'not found' if already deleted)"
                   >
                     <UIcon name="i-lucide-external-link" class="size-3.5" />
                   </a>

@@ -105,6 +105,11 @@ function maskFieldValue(field: string, value: string): string {
     return maskUrl(value)
   }
 
+  // Contact field (tobedeleted entries) — the old value is the contact name
+  if (f === 'contact') {
+    return maskName(value)
+  }
+
   return value
 }
 
@@ -124,24 +129,33 @@ export function maskChangelogEntry(entry: ChangelogEntry): ChangelogEntry {
  * Mask PII in a review change.
  */
 export function maskReviewChange(change: ReviewChange): ReviewChange {
-  // Mask displayName (last name portion)
+  // Mask displayName — for single-name contacts (tobedeleted), mask the whole name
   const nameParts = (change.displayName || '').trim().split(/\s+/)
+  let maskedName: string
   if (nameParts.length > 1) {
     nameParts[nameParts.length - 1] = maskLastName(nameParts[nameParts.length - 1]!)
+    maskedName = nameParts.join(' ')
+  } else {
+    maskedName = maskName(change.displayName || '')
   }
 
   return {
     ...change,
     resourceName: '***',
-    displayName: nameParts.join(' '),
+    displayName: maskedName,
     old: maskFieldValue(change.field, change.old),
     new: maskFieldValue(change.field, change.new),
   }
 }
 
 /**
- * Mask PII in analytics top contacts.
+ * Mask a generic name/string: show first 3 chars + "***"
  */
+function maskName(value: string): string {
+  if (!value || value.length <= 3) return '***'
+  return value.substring(0, 3) + '***'
+}
+
 /**
  * Mask PII in a LinkedIn signal.
  */
@@ -158,6 +172,6 @@ export function maskLinkedInSignal(signal: LinkedInSignal): LinkedInSignal {
   }
 }
 
-export function maskTopContact(contact: { name: string; changes: number }): { name: string; changes: number } {
-  return { name: '***', changes: contact.changes }
+export function maskTopContact<T extends { name: string }>(contact: T): T {
+  return { ...contact, name: maskName(contact.name), resourceName: '***' }
 }

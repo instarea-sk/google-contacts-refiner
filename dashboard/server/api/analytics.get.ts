@@ -2,6 +2,7 @@ import type { AnalyticsResponse, ChangelogEntry } from '../utils/types'
 import {
   getChangelogWithMarkers,
   getAIReviewCheckpoint,
+  getContactNameMap,
   isBatchMarker,
   estimateAICost,
 } from '../utils/gcs'
@@ -20,9 +21,10 @@ function fieldCategory(field: string): string {
 
 export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
   const demo = await isDemoMode(event)
-  const [fullLog, aiCheckpoint] = await Promise.all([
+  const [fullLog, aiCheckpoint, nameMap] = await Promise.all([
     getChangelogWithMarkers(),
     getAIReviewCheckpoint(),
+    getContactNameMap(),
   ])
 
   // Derive deduplicated entries from full log (avoids duplicate GCS read)
@@ -76,15 +78,26 @@ export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
     .map(([date, stats]) => ({ date, ...stats }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
-  // Top contacts by number of changes
-  const contactMap = new Map<string, { name: string; changes: number }>()
+  // Top contacts by number of changes — resolve to display names
+  const contactMap = new Map<string, { resourceName: string; name: string; changes: number; lastChanged: string }>()
   for (const e of entries) {
-    const existing = contactMap.get(e.resourceName) ?? { name: e.resourceName, changes: 0 }
+    const existing = contactMap.get(e.resourceName) ?? {
+      resourceName: e.resourceName,
+      name: nameMap.get(e.resourceName) || e.resourceName.replace('people/', ''),
+      changes: 0,
+      lastChanged: '',
+    }
     existing.changes++
+    if (e.timestamp > existing.lastChanged) existing.lastChanged = e.timestamp
     contactMap.set(e.resourceName, existing)
   }
   const topContacts = Array.from(contactMap.values())
     .sort((a, b) => b.changes - a.changes)
+    .slice(0, 10)
+
+  // Recently changed contacts (last 10 by timestamp)
+  const recentlyChanged = Array.from(contactMap.values())
+    .sort((a, b) => b.lastChanged.localeCompare(a.lastChanged))
     .slice(0, 10)
 
   const estimatedCost = estimateAICost(aiCheckpoint?.last_reviewed ?? 0)
@@ -97,6 +110,7 @@ export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
     totalFailed,
     dailyRuns,
     topContacts: demo ? topContacts.map(maskTopContact) : topContacts,
+    recentlyChanged: demo ? recentlyChanged.map(maskTopContact) : recentlyChanged,
     estimatedCost,
   }
 })

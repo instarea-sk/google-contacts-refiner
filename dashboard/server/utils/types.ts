@@ -187,6 +187,13 @@ export interface ChangelogResponse {
   pageSize: number
 }
 
+export interface ContactSummary {
+  resourceName: string
+  name: string
+  changes: number
+  lastChanged: string
+}
+
 export interface AnalyticsResponse {
   byField: Record<string, number>
   byConfidence: { high: number; medium: number; low: number }
@@ -194,7 +201,8 @@ export interface AnalyticsResponse {
   totalChanges: number
   totalFailed: number
   dailyRuns: Array<{ date: string; changes: number; failed: number }>
-  topContacts: Array<{ name: string; changes: number }>
+  topContacts: ContactSummary[]
+  recentlyChanged: ContactSummary[]
   estimatedCost: number
 }
 

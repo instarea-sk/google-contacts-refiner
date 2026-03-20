@@ -352,6 +352,47 @@ export async function getLinkedInSignals(): Promise<{ signals: LinkedInSignal[];
   })
 }
 
+// --- Contact Name Resolution ---
+
+/**
+ * Build a map of resourceName -> displayName from workplan and review files.
+ * Used by analytics and changelog to show human-readable contact names.
+ */
+export async function getContactNameMap(): Promise<Map<string, string>> {
+  return cachedRead('contact_names', async () => {
+    const map = new Map<string, string>()
+
+    // Source 1: workplan batches (most comprehensive)
+    const workplan = await getLatestWorkplan()
+    if (workplan?.batches) {
+      for (const batch of workplan.batches) {
+        for (const contact of batch.contacts) {
+          if (contact.resourceName && contact.displayName) {
+            map.set(contact.resourceName, contact.displayName)
+          }
+        }
+      }
+    }
+
+    // Source 2: LinkedIn signals (has name field)
+    const { signals } = await getLinkedInSignals()
+    for (const signal of signals) {
+      if (signal.resourceName && signal.name && !map.has(signal.resourceName)) {
+        map.set(signal.resourceName, signal.name)
+      }
+    }
+
+    return map
+  }) as Promise<Map<string, string>>
+}
+
+// --- Cache Control ---
+
+/** Clear all cached data to force fresh reads from GCS */
+export function clearCache(): void {
+  cache.clear()
+}
+
 // --- Cost Estimation ---
 
 /** Estimate AI review cost (Haiku: ~$0.80/1M input, $4/1M output, ~500 tokens/review) */
