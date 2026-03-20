@@ -71,10 +71,10 @@ watch(() => route.path, () => {
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors"
+          class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200"
           :class="[
             isActive(item.to)
-              ? 'bg-primary-500/15 text-primary-400'
+              ? 'bg-primary-500/15 text-primary-400 nav-active'
               : item.highlight
                 ? 'text-primary-300 hover:text-primary-200 hover:bg-primary-500/10 border border-primary-500/20'
                 : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50',

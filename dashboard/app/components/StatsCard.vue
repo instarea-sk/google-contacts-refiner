@@ -9,7 +9,7 @@ defineProps<{
 
 <template>
   <div
-    class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 relative overflow-hidden scanlines"
+    class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-5 relative overflow-hidden scanlines card-hover"
     :class="{
       'glow-green': color === 'green',
       'glow-amber': color === 'amber',
@@ -19,7 +19,7 @@ defineProps<{
   >
     <div class="flex items-start justify-between relative z-10">
       <div>
-        <p class="text-xs uppercase tracking-wider text-neutral-500 mb-1">
+        <p class="label-refined mb-1.5">
           {{ label }}
         </p>
         <p class="text-2xl font-bold text-neutral-100 tabular-nums">

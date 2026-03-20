@@ -148,7 +148,7 @@ const steps = [
     </nav>
 
     <!-- Hero -->
-    <section class="pt-32 pb-20 px-6">
+    <section class="pt-32 pb-20 px-6 hero-gradient">
       <div class="max-w-3xl mx-auto text-center space-y-6">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neutral-800 bg-neutral-900/50 text-xs text-neutral-400">
           <span class="size-1.5 rounded-full bg-primary-400 animate-pulse-glow" />
@@ -258,7 +258,7 @@ const steps = [
           <div
             v-for="feature in features"
             :key="feature.title"
-            class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 space-y-3 hover:border-neutral-700 transition-colors"
+            class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 space-y-3 hover:border-neutral-700 card-hover"
           >
             <UIcon :name="feature.icon" :class="['size-6', feature.color]" />
             <h3 class="text-sm font-semibold text-neutral-100">{{ feature.title }}</h3>

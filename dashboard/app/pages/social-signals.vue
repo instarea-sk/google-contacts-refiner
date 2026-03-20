@@ -188,7 +188,7 @@ onUnmounted(() => clearInterval(interval))
         <div
           v-for="signal in filteredSignals"
           :key="signal.resourceName"
-          class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 hover:border-neutral-700 transition-colors"
+          class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 hover:border-neutral-700 card-hover"
         >
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 flex-1">
