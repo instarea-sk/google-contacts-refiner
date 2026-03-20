@@ -601,7 +601,11 @@ def _upload_signals_to_gcs():
         return  # GCS FUSE handles sync in cloud mode
 
     try:
+        import os
         from google.cloud import storage
+        creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/dashboard-reader-key.json")
+        if os.path.exists(creds_path):
+            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", creds_path)
         client = storage.Client()
         bucket = client.bucket("contacts-refiner-data")
         blob = bucket.blob("data/linkedin_signals.json")
