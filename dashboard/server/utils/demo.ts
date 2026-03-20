@@ -162,7 +162,7 @@ function maskName(value: string): string {
 export function maskLinkedInSignal(signal: LinkedInSignal): LinkedInSignal {
   const nameParts = (signal.name || '').trim().split(/\s+/)
   if (nameParts.length > 1) {
-    nameParts[nameParts.length - 1] = nameParts[nameParts.length - 1]!.charAt(0).toUpperCase() + '.'
+    nameParts[nameParts.length - 1] = maskLastName(nameParts[nameParts.length - 1]!)
   }
   return {
     ...signal,

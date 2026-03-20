@@ -8,6 +8,8 @@ import type {
   BatchMarker,
   ReviewSession,
   FeedbackEntry,
+  LinkedInSignal,
+  LinkedInSignalsFile,
 } from './types'
 
 let storage: Storage | null = null
@@ -338,8 +340,6 @@ export async function getPipelineRuns(): Promise<PipelineRun[]> {
 }
 
 // --- LinkedIn Signals API ---
-
-import type { LinkedInSignalsFile, LinkedInSignal } from './types'
 
 export async function getLinkedInSignals(): Promise<{ signals: LinkedInSignal[]; generated: string | null }> {
   return cachedRead('linkedin_signals', async () => {

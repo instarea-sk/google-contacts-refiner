@@ -45,6 +45,9 @@ const currentPage = ref(0)
 // Focused contact index (relative to current page)
 const focusedIndex = ref(0)
 
+// Undecided count for filtered changes (used in bulk buttons)
+const undecidedCount = computed(() => filteredChanges.value.filter(c => !decisions.value[c.id]).length)
+
 // Saving state
 const isSaving = ref(false)
 const lastSaved = ref<string | null>(null)
@@ -213,7 +216,6 @@ function formatFieldName(field: string): string {
   return field
     .replace('phoneNumbers', 'phones')
     .replace('emailAddresses', 'emails')
-    .replace('names', 'names')
     .replace('organizations', 'orgs')
     .replace('addresses', 'addr')
 }
@@ -662,19 +664,19 @@ onUnmounted(() => {
 
           <template v-if="!isDemo">
             <UButton
-              v-if="filteredChanges.filter(c => !decisions[c.id]).length"
+              v-if="undecidedCount > 0"
               size="xs"
               variant="soft"
               color="success"
-              :label="`Approve remaining (${filteredChanges.filter(c => !decisions[c.id]).length})`"
+              :label="`Approve remaining (${undecidedCount})`"
               @click="bulkDecide('approved')"
             />
             <UButton
-              v-if="filteredChanges.filter(c => !decisions[c.id]).length"
+              v-if="undecidedCount > 0"
               size="xs"
               variant="soft"
               color="error"
-              :label="`Reject remaining (${filteredChanges.filter(c => !decisions[c.id]).length})`"
+              :label="`Reject remaining (${undecidedCount})`"
               @click="bulkDecide('rejected')"
             />
           </template>
