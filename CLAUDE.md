@@ -4,7 +4,7 @@
 - Dashboard: `cd dashboard && GOOGLE_APPLICATION_CREDENTIALS=/tmp/dashboard-reader-key.json pnpm dev`
 - SA key may expire — restore with: `gcloud iam service-accounts keys create /tmp/dashboard-reader-key.json --iam-account=dashboard-reader@contacts-refiner.iam.gserviceaccount.com --project=contacts-refiner`
 - Python pipeline: `uv run python main.py analyze` / `uv run python main.py fix --auto`
-- Full Python CLI: `backup`, `analyze`, `fix`, `fix --auto`, `ai-review`
+- Full Python CLI: `backup`, `analyze`, `fix`, `fix --auto`, `ai-review`, `followup`, `ltns`, `tag-activity`
 - Dashboard build: `cd dashboard && pnpm build` / `pnpm preview` (test prod locally)
 - **Dev server cleanup**: Global PreToolUse hook auto-kills stale Nuxt processes before starting new `pnpm dev`
 
@@ -26,6 +26,8 @@
 - Corrupt decision files go to `data/failed/` (not retried)
 
 ## Key Architecture
+- Pipeline phases: 0 (review feedback) → 1 (backup, analyze, fix HIGH) → 2 (AI review MEDIUM) → 3 (activity tagging) → 4 (FollowUp scoring)
+- Phase 4 gated by `ENABLE_FOLLOWUP_SCORING` env var (not yet enabled in Cloud Run)
 - GCS is the message bus: workplan → analyze → queue → review → export → apply
 - Review sessions in `data/review_sessions/`, decisions in `data/review_decisions_*.json`
 - Feedback learning in `data/feedback.jsonl`
@@ -38,3 +40,4 @@
 - Demo masking: `demo.ts` — must handle ALL PII fields including `field === 'contact'` (tobedeleted names)
 - API sub-routes: use directory structure (e.g., `api/config/index.get.ts` + `api/config/pause.post.ts`)
 - Nuxt API routes with `isDemoMode()` guard for write endpoints
+- GCS upload: use `upload_file_to_gcs()` from `utils.py` — shared by linkedin_scanner and followup_scorer
