@@ -13,6 +13,7 @@ const navItems = [
   { label: 'Social Signals', icon: 'i-lucide-radar', to: '/social-signals' },
   { label: 'FollowUp', icon: 'i-lucide-user-round-check', to: '/followup' },
   { label: 'Runs', icon: 'i-lucide-play-circle', to: '/runs' },
+  { label: 'Pipeline', icon: 'i-lucide-workflow', to: '/pipeline' },
   { label: 'Config', icon: 'i-lucide-settings', to: '/config' },
 ]
 
@@ -143,5 +144,8 @@ watch(() => route.path, () => {
         <slot />
       </div>
     </main>
+
+    <!-- Bug report floating button (all pages, including demo) -->
+    <BugReportButton />
   </div>
 </template>
