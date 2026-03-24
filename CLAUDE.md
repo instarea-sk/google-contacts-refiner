@@ -10,7 +10,7 @@
 
 ## Deploy
 - Render auto-deploys dashboard on push to main (~5min)
-- Cloud Build auto-deploys Cloud Run Job on push to main (~15min); uses `--update-env-vars` (NOT `--set-env-vars` which wipes all vars)
+- Cloud Build auto-deploys Cloud Run Job on push to main (~15min); uses `--update-env-vars` (NOT `--set-env-vars` which wipes all vars); must include `ENVIRONMENT=cloud`
 - GA4 Measurement ID: `G-QFW0D3J3KV` (in nuxt.config.ts head scripts)
 
 ## GCP Auth
@@ -42,7 +42,8 @@
 - Cache: 60s TTL in-memory Map; `clearCache()` exposed via POST /api/cache-clear
 - Demo masking: `demo.ts` — must handle ALL PII fields including `field === 'contact'` (tobedeleted names)
 - API sub-routes: use directory structure (e.g., `api/config/index.get.ts` + `api/config/pause.post.ts`)
-- Nuxt API routes with `isDemoMode()` guard for write endpoints
+- Nuxt API routes: ALL endpoints need `isDemoMode()` guard (repo is public, unauthenticated users get empty data)
+- Security headers: X-Frame-Options DENY, X-Content-Type-Options nosniff via nitro routeRules
 - GCS upload: use `upload_file_to_gcs()` from `utils.py` — shared by linkedin_scanner and followup_scorer
 - Bug report: user-controlled screenshots only (paste/upload) — NEVER use DOM-scraping libraries (html2canvas etc.)
 - Bug report API: sanitize all user input, wrap text in code blocks, validate screenshot as image data URL
