@@ -1,4 +1,4 @@
-import { getReviewSession, getLatestReviewFile, saveReviewDecisions } from '../../utils/gcs'
+import { getReviewSession, getLatestReviewFile, getReviewFile, saveReviewDecisions } from '../../utils/gcs'
 import { parseReviewFile } from '../../utils/review-helpers'
 import { isDemoMode } from '../../utils/demo'
 
@@ -16,14 +16,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Missing sessionId' })
   }
 
-  const [session, reviewFile] = await Promise.all([
-    getReviewSession(body.sessionId),
-    getLatestReviewFile(),
-  ])
+  const session = await getReviewSession(body.sessionId)
 
   if (!session) {
     throw createError({ statusCode: 404, message: 'Session not found' })
   }
+
+  // Use the session's own review file — NOT the latest one.
+  // If a new pipeline run created a newer review file, the changeIds won't match
+  // and all decisions would be silently dropped.
+  const reviewFile = session.reviewFilePath
+    ? await getReviewFile(session.reviewFilePath)
+    : await getLatestReviewFile()
 
   // Build change lookup from review file
   const changeMap = new Map<string, { resourceName: string; displayName: string; field: string; old: string; new: string; confidence: number; reason: string }>()

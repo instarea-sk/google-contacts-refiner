@@ -39,9 +39,13 @@ export function extractRuleCategory(reason: string): string {
   return 'other'
 }
 
-export function makeChangeId(resourceName: string, field: string, oldVal: string, newVal: string): string {
+export function makeChangeId(resourceName: string, field: string, _oldVal: string, newVal: string): string {
+  // Exclude oldVal from hash — it changes between re-analyses (e.g. contact name
+  // updates) which orphans all prior review decisions. newVal is the proposed change
+  // and is stable across pipeline runs. resourceName|field|newVal is unique enough
+  // (and handles multiple changes on same field like phoneNumbers[+]).
   return createHash('sha256')
-    .update(`${resourceName}|${field}|${oldVal}|${newVal}`)
+    .update(`${resourceName}|${field}|${newVal}`)
     .digest('hex')
     .slice(0, 12)
 }

@@ -244,6 +244,30 @@ export async function getLatestReviewFile(): Promise<{ path: string; data: unkno
   }
 }
 
+export async function getReviewFile(path: string): Promise<{ path: string; data: unknown } | null> {
+  try {
+    const data = await readJson(path)
+    return data ? { path, data } : null
+  } catch (err) {
+    console.error(`[GCS] getReviewFile(${path}) failed:`, (err as Error).message)
+    return null
+  }
+}
+
+export async function getSessionForReviewFile(reviewFilePath: string): Promise<ReviewSession | null> {
+  // Find the session that matches this specific review file (not just the latest session)
+  const paths = await findAllFiles('data/review_sessions/', '.json')
+  // Sort newest first so we find the most recent matching session
+  paths.sort((a, b) => b.localeCompare(a))
+  for (const p of paths) {
+    const session = await readJson<ReviewSession>(p)
+    if (session?.reviewFilePath === reviewFilePath && Object.keys(session.decisions || {}).length > 0) {
+      return session
+    }
+  }
+  return null
+}
+
 export async function getReviewSession(sessionId: string): Promise<ReviewSession | null> {
   if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
     throw createError({ statusCode: 400, message: 'Invalid sessionId format' })

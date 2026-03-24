@@ -1,5 +1,5 @@
 import type { ReviewChange, ReviewSession } from '../../utils/types'
-import { getLatestReviewFile, getLatestReviewSession } from '../../utils/gcs'
+import { getLatestReviewFile, getSessionForReviewFile } from '../../utils/gcs'
 import { parseReviewFile } from '../../utils/review-helpers'
 import { isDemoMode, maskReviewChange } from '../../utils/demo'
 
@@ -42,9 +42,8 @@ export default defineEventHandler(async (event): Promise<ReviewResponse> => {
     if (c.confidence > max) max = c.confidence
   }
 
-  // Try to find existing session for this review file
-  const session = await getLatestReviewSession()
-  const activeSession = session?.reviewFilePath === reviewFile.path ? session : null
+  // Find existing session that matches this specific review file
+  const activeSession = await getSessionForReviewFile(reviewFile.path)
 
   return {
     changes: demo ? changes.map(maskReviewChange) : changes,

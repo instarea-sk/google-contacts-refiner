@@ -295,7 +295,8 @@ function saveToLocalStorage() {
 
 function scheduleAutoSave() {
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
-  autoSaveTimer = setTimeout(() => saveToGCS(), 30_000)
+  // Save immediately with a tiny debounce to batch rapid clicks (e.g. bulk approve)
+  autoSaveTimer = setTimeout(() => saveToGCS(), 1_000)
 }
 
 async function saveToGCS() {
@@ -425,13 +426,37 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+// Flush unsaved decisions when navigating away or closing tab
+function handleBeforeUnload() {
+  if (autoSaveTimer && Object.keys(decisions.value).length) {
+    // Use sendBeacon for reliable delivery on tab close
+    const changeMeta: Record<string, { ruleCategory: string; field: string; old: string; suggested: string; confidence: number }> = {}
+    for (const c of allChanges.value) {
+      if (decisions.value[c.id]) {
+        changeMeta[c.id] = { ruleCategory: c.ruleCategory, field: c.field, old: c.old, suggested: c.new, confidence: c.confidence }
+      }
+    }
+    navigator.sendBeacon('/api/review/decide', new Blob([JSON.stringify({
+      sessionId: sessionId.value,
+      reviewFilePath: data.value?.reviewFilePath,
+      decisions: Object.values(decisions.value),
+      changeMeta,
+    })], { type: 'application/json' }))
+  }
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    saveToGCS() // flush on SPA navigation
+  }
 })
 
 
