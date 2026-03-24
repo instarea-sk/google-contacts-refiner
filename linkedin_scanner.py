@@ -355,16 +355,16 @@ class LinkedInScanner:
                 if existing:
                     logger.info(f"LinkedIn: Loaded {len(existing)} existing signals")
                 return existing
-            except (json.JSONDecodeError, IOError):
-                pass
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning("LinkedIn: Failed to load signals file: %s", e)
         return {}
 
     def _load_cache(self) -> dict:
         if SCAN_CACHE_FILE.exists():
             try:
                 return json.loads(SCAN_CACHE_FILE.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, IOError):
-                pass
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning("LinkedIn: Failed to load cache file: %s", e)
         return {}
 
     def save_cache(self):

@@ -42,11 +42,12 @@ function getStorage(): Storage {
       console.log('[GCS] Using credentials from env var - project:', creds.project_id)
       return storage
     } catch (err) {
-      console.error('[GCS] Failed to parse SA credentials:', (err as Error).message)
+      // SA key was provided but is malformed — fail loudly, don't silently fall through to ADC
+      throw new Error(`[GCS] Failed to parse SA credentials: ${(err as Error).message}`)
     }
   }
 
-  // Fallback to ADC
+  // Fallback to ADC (only when no explicit SA key was provided)
   storage = new Storage()
   console.log('[GCS] Using ADC fallback')
   return storage
@@ -88,16 +89,11 @@ async function readJson<T>(path: string): Promise<T | null> {
 }
 
 async function findLatestFile(prefix: string, extension: string): Promise<string | null> {
-  try {
-    const [files] = await getBucket().getFiles({ prefix })
-    const matching = files
-      .filter(f => f.name.endsWith(extension))
-      .sort((a, b) => b.name.localeCompare(a.name))
-    return matching[0]?.name ?? null
-  } catch (err) {
-    console.error(`[GCS] findLatestFile(${prefix}) failed:`, (err as Error).message)
-    return null
-  }
+  const [files] = await getBucket().getFiles({ prefix })
+  const matching = files
+    .filter(f => f.name.endsWith(extension))
+    .sort((a, b) => b.name.localeCompare(a.name))
+  return matching[0]?.name ?? null
 }
 
 // --- Public API ---
@@ -121,16 +117,11 @@ export async function getAIReviewCheckpoint(): Promise<AIReviewCheckpoint | null
 }
 
 async function findAllFiles(prefix: string, extension: string): Promise<string[]> {
-  try {
-    const [files] = await getBucket().getFiles({ prefix })
-    return files
-      .filter(f => f.name.endsWith(extension))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map(f => f.name)
-  } catch (err) {
-    console.error(`[GCS] findAllFiles(${prefix}) failed:`, (err as Error).message)
-    return []
-  }
+  const [files] = await getBucket().getFiles({ prefix })
+  return files
+    .filter(f => f.name.endsWith(extension))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(f => f.name)
 }
 
 async function readAllChangelogs(): Promise<ChangelogLine[]> {
@@ -227,31 +218,21 @@ async function appendJsonl(path: string, entries: unknown[]): Promise<void> {
 
 export async function getLatestReviewFile(): Promise<{ path: string; data: unknown } | null> {
   // Use specific prefix to avoid matching review_sessions/ and review_decisions_
-  try {
-    const [files] = await getBucket().getFiles({ prefix: 'data/review_' })
-    const matching = files
-      .filter(f => f.name.endsWith('.json'))
-      // Exclude subdirectories (review_sessions/) and decision files (review_decisions_)
-      .filter(f => !f.name.includes('/review_sessions/') && !f.name.includes('review_decisions_'))
-      .sort((a, b) => b.name.localeCompare(a.name))
-    const path = matching[0]?.name
-    if (!path) return null
-    const data = await readJson(path)
-    return data ? { path, data } : null
-  } catch (err) {
-    console.error('[GCS] getLatestReviewFile failed:', (err as Error).message)
-    return null
-  }
+  const [files] = await getBucket().getFiles({ prefix: 'data/review_' })
+  const matching = files
+    .filter(f => f.name.endsWith('.json'))
+    // Exclude subdirectories (review_sessions/) and decision files (review_decisions_)
+    .filter(f => !f.name.includes('/review_sessions/') && !f.name.includes('review_decisions_'))
+    .sort((a, b) => b.name.localeCompare(a.name))
+  const path = matching[0]?.name
+  if (!path) return null
+  const data = await readJson(path)
+  return data ? { path, data } : null
 }
 
 export async function getReviewFile(path: string): Promise<{ path: string; data: unknown } | null> {
-  try {
-    const data = await readJson(path)
-    return data ? { path, data } : null
-  } catch (err) {
-    console.error(`[GCS] getReviewFile(${path}) failed:`, (err as Error).message)
-    return null
-  }
+  const data = await readJson(path)
+  return data ? { path, data } : null
 }
 
 export async function getSessionForReviewFile(reviewFilePath: string): Promise<ReviewSession | null> {

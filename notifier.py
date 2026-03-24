@@ -126,8 +126,6 @@ def send_email_digest(run_state: dict, start: datetime) -> bool:
 
     # LinkedIn Social Signals summary
     try:
-        import json
-        from config import DATA_DIR
         signals_path = DATA_DIR / "linkedin_signals.json"
         if signals_path.exists():
             sig_data = json.loads(signals_path.read_text(encoding="utf-8"))
@@ -137,8 +135,41 @@ def send_email_digest(run_state: dict, start: datetime) -> bool:
                 "",
                 f"LinkedIn Signals: {len(sig_list)} profiles, {job_changes} job changes",
             ])
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"LinkedIn signals stats unavailable: {e}")
+
+    # FollowUp scoring summary
+    try:
+        followup_path = DATA_DIR / "followup_scores.json"
+        if followup_path.exists():
+            fu_data = json.loads(followup_path.read_text(encoding="utf-8"))
+            fu_count = fu_data.get("count", 0)
+            fu_stats = fu_data.get("stats", {})
+            fu_job = fu_stats.get("job_change", 0)
+            fu_active = fu_stats.get("active", 0)
+            fu_no_li = fu_stats.get("no_linkedin", 0)
+            fu_compl = fu_stats.get("avg_completeness", 0)
+
+            # Top 3 contacts by score
+            scores = fu_data.get("scores", {})
+            top3 = sorted(scores.values(), key=lambda s: s.get("score_total", 0), reverse=True)[:3]
+
+            body_lines.extend([
+                "",
+                f"FollowUp: {fu_count} candidates",
+                f"  Job changes: {fu_job}  |  Active: {fu_active}  |  No LinkedIn: {fu_no_li}",
+                f"  Avg completeness: {fu_compl:.1f}/4",
+            ])
+
+            if top3:
+                body_lines.append("  Top 3:")
+                for c in top3:
+                    name = c.get("name", "?")
+                    score = c.get("score_total", 0)
+                    signal = c.get("linkedin", {}).get("signal_type", "-")
+                    body_lines.append(f"    {c.get('rank', '-')}. {name} ({score:.0f}pts, {signal})")
+    except Exception as e:
+        logger.debug(f"FollowUp stats unavailable: {e}")
 
     body_lines.extend([
         "",

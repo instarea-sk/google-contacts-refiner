@@ -291,14 +291,14 @@ class CodeTableManager:
                 try:
                     raw = json.loads(cached_file.read_text(encoding="utf-8"))
                     info["count"] = len(raw.get("entries", []))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to read cached %s: %s", name, e)
             elif seed_file.exists():
                 try:
                     raw = json.loads(seed_file.read_text(encoding="utf-8"))
                     info["count"] = len(raw.get("entries", []))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to read seed %s: %s", name, e)
 
             info["refresh_url"] = spec.get("refresh_url")
             info["max_age_days"] = spec.get("max_age_days")

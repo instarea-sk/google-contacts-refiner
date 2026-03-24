@@ -5,6 +5,7 @@ Uses the Anthropic SDK to enhance rule-based analysis with AI judgment.
 Falls back gracefully to rule-based results if AI is unavailable.
 """
 import json
+import logging
 import os
 import time
 from pathlib import Path
@@ -18,6 +19,8 @@ from config import (
     AI_MAX_CONTACTS_PER_BATCH,
     CONFIDENCE_HIGH,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AIAnalyzer:
@@ -410,7 +413,7 @@ Rules:
             return text
 
         except Exception as e:
-            print(f"   ⚠️  AI error: {e}")
+            logger.warning("AI error: %s", e)
             return None
 
     def _estimate_cost(self, input_tokens: int, output_tokens: int) -> float:
@@ -434,7 +437,7 @@ Rules:
         """Check if session cost limit has been reached."""
         if self._estimated_cost >= AI_COST_LIMIT_PER_SESSION:
             if not self._cost_limit_hit:
-                print(f"   ⚠️  AI cost limit reached (${self._estimated_cost:.2f} >= ${AI_COST_LIMIT_PER_SESSION:.2f}), skipping remaining AI reviews")
+                logger.warning("AI cost limit reached ($%.2f >= $%.2f), skipping remaining AI reviews", self._estimated_cost, AI_COST_LIMIT_PER_SESSION)
                 self._cost_limit_hit = True
             return True
         return False

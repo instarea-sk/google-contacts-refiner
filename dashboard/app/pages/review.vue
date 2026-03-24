@@ -429,9 +429,17 @@ function handleKeydown(e: KeyboardEvent) {
 // Flush unsaved decisions when navigating away or closing tab
 function handleBeforeUnload() {
   if (autoSaveTimer && Object.keys(decisions.value).length) {
-    navigator.sendBeacon('/api/review/decide', new Blob([
-      JSON.stringify(buildSavePayload()),
-    ], { type: 'application/json' }))
+    const payload = JSON.stringify(buildSavePayload())
+    const blob = new Blob([payload], { type: 'application/json' })
+    const sent = navigator.sendBeacon('/api/review/decide', blob)
+    if (!sent) {
+      // sendBeacon can fail if payload is too large or browser is shutting down
+      // Fall back to synchronous XHR (allowed in beforeunload)
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', '/api/review/decide', false)
+      xhr.setRequestHeader('Content-Type', 'application/json')
+      xhr.send(payload)
+    }
   }
 }
 
