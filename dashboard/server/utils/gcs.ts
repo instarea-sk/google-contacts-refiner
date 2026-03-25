@@ -326,12 +326,30 @@ export async function getQueueStats(): Promise<QueueStatsEntry[]> {
 
 // --- Pipeline Runs API ---
 
+export interface PhaseDetail {
+  elapsed_s: number
+  changes_applied?: number
+  changes_failed?: number
+  changes_skipped?: number
+  promoted?: number
+  demoted?: number
+  ai_cost_usd?: number
+  ai_tokens?: number
+  backup_elapsed_s?: number
+  analyze_elapsed_s?: number
+  fix_elapsed_s?: number
+  fix_changes_applied?: number
+}
+
 export interface PipelineRun {
   date: string
   duration_seconds: number
   phases_completed: string[]
   queue_size: number
   errors: string[]
+  changes_applied?: number
+  changes_failed?: number
+  phases?: Record<string, PhaseDetail>
 }
 
 export async function getPipelineRuns(): Promise<PipelineRun[]> {
@@ -400,6 +418,19 @@ export async function getContactNameMap(): Promise<Map<string, string>> {
 
     return map
   }) as Promise<Map<string, string>>
+}
+
+// --- Pipeline Config ---
+
+import type { PipelineConfig } from './types'
+
+export async function getPipelineConfig(): Promise<PipelineConfig | null> {
+  return readJson<PipelineConfig>('data/pipeline_config.json')
+}
+
+export async function savePipelineConfig(config: PipelineConfig): Promise<void> {
+  await writeJson('data/pipeline_config.json', { ...config, updatedAt: new Date().toISOString() })
+  clearCache()
 }
 
 // --- Cache Control ---

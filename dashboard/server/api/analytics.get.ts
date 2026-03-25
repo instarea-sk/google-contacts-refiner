@@ -40,9 +40,10 @@ export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
     }
   }
 
-  // By field type + confidence in a single pass
+  // By field type + confidence + reason drill-down in a single pass
   const byField: Record<string, number> = {}
   const byConfidence = { high: 0, medium: 0, low: 0 }
+  const reasonMap = new Map<string, Map<string, number>>() // cat -> reason -> count
   for (const e of entries) {
     const cat = fieldCategory(e.field)
     byField[cat] = (byField[cat] ?? 0) + 1
@@ -50,6 +51,22 @@ export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
     if (c === 'high') byConfidence.high++
     else if (c === 'medium') byConfidence.medium++
     else byConfidence.low++
+    // Aggregate reasons per field category
+    if (!reasonMap.has(cat)) reasonMap.set(cat, new Map())
+    const reasons = reasonMap.get(cat)!
+    const reason = e.reason || 'unknown'
+    reasons.set(reason, (reasons.get(reason) ?? 0) + 1)
+  }
+  // Build drill-down detail
+  const byFieldDetail: Record<string, { count: number; reasons: Array<{ text: string; count: number }> }> = {}
+  for (const [cat, reasons] of reasonMap) {
+    byFieldDetail[cat] = {
+      count: byField[cat] ?? 0,
+      reasons: Array.from(reasons.entries())
+        .map(([text, count]) => ({ text, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+    }
   }
 
   // Aggregate batch markers in a single pass — build daily breakdown + find latest day
@@ -104,6 +121,7 @@ export default defineEventHandler(async (event): Promise<AnalyticsResponse> => {
 
   return {
     byField,
+    byFieldDetail,
     byConfidence,
     successRate,
     totalChanges,

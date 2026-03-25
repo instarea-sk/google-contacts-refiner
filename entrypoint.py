@@ -377,10 +377,17 @@ def run():
         "changes_failed": 0,
         "queue_size": 0,
         "errors": [],
+        "phases": {},
     }
 
-    from config import AI_REVIEW_CHECKPOINT
+    from config import AI_REVIEW_CHECKPOINT, load_pipeline_config_overrides
     from recovery import RecoveryManager
+
+    # Load dashboard config overrides (if any)
+    try:
+        load_pipeline_config_overrides()
+    except Exception as e:
+        logger.warning("Config override loading failed (using defaults): %s", e)
 
     # ── Pre-phase: Refresh stale code tables ──────────────────────────
     try:
@@ -390,9 +397,11 @@ def run():
         logger.warning("Code table refresh failed (non-fatal): %s", e)
 
     # ── Phase 0: Process review feedback ─────────────────────────────
+    _p0_start = datetime.now()
     try:
         _process_review_feedback()
         run_state["phases_completed"].append("phase0")
+        run_state["phases"]["phase0"] = {"elapsed_s": int((datetime.now() - _p0_start).total_seconds())}
     except Exception as e:
         logger.warning(f"Phase 0 failed (non-fatal): {e}")
         run_state["errors"].append(f"Phase 0: {e}")
@@ -438,6 +447,7 @@ def run():
 
     # Step 1: Backup
     logger.info("Step 1/3: Backup")
+    _backup_start = datetime.now()
     try:
         from main import cmd_backup
         cmd_backup()
@@ -445,9 +455,11 @@ def run():
         logger.error(f"Backup failed: {e}")
         traceback.print_exc()
         sys.exit(1)
+    _backup_elapsed = int((datetime.now() - _backup_start).total_seconds())
 
     # Step 2: Analyze (rule-based only — NO AI, fast ~2 min)
     logger.info("Step 2/3: Analyze (rule-based)")
+    _analyze_start = datetime.now()
     original_ai = os.environ.get("AI_ENABLED")
     os.environ["AI_ENABLED"] = "false"
     try:
@@ -463,9 +475,11 @@ def run():
             os.environ["AI_ENABLED"] = original_ai
         else:
             os.environ.pop("AI_ENABLED", None)
+    _analyze_elapsed = int((datetime.now() - _analyze_start).total_seconds())
 
     # Step 3: Auto-fix HIGH confidence changes (mechanical)
     logger.info(f"Step 3/3: Auto-fix HIGH {'(DRY RUN)' if dry_run else ''}")
+    _fix_start = datetime.now()
     try:
         from main import cmd_fix
         fix_result = cmd_fix(auto_mode=True, confidence_threshold=0.90, dry_run=dry_run)
@@ -477,6 +491,7 @@ def run():
         run_state["errors"].append(f"Phase 1 auto-fix: {e}")
         traceback.print_exc()
         sys.exit(1)
+    _fix_elapsed = int((datetime.now() - _fix_start).total_seconds())
 
     # Record queue stats after analysis
     try:
@@ -488,6 +503,15 @@ def run():
     run_state["phases_completed"].append("phase1")
     phase1_elapsed = datetime.now() - start
     logger.info(f"Phase 1 completed in {phase1_elapsed}")
+    run_state["phases"]["phase1"] = {
+        "elapsed_s": int(phase1_elapsed.total_seconds()),
+        "backup_elapsed_s": _backup_elapsed,
+        "analyze_elapsed_s": _analyze_elapsed,
+        "fix_elapsed_s": _fix_elapsed,
+        "changes_applied": run_state["changes_applied"],
+        "changes_failed": run_state["changes_failed"],
+        "changes_skipped": fix_result.get("skipped", 0) if fix_result else 0,
+    }
 
     # ── Phase 2: AI review (checkpointed) ───────────────────────────
     if skip_ai:
@@ -497,9 +521,17 @@ def run():
         return
 
     logger.info("Phase 2: AI review of MEDIUM changes")
+    _p2_start = datetime.now()
+    _p2_ai_result = None
     try:
         from main import cmd_ai_review
-        promoted_count = cmd_ai_review()
+        _p2_ai_result = cmd_ai_review()
+        # Handle both old (int) and new (dict) return types
+        if isinstance(_p2_ai_result, dict):
+            promoted_count = _p2_ai_result.get("promoted", 0)
+        else:
+            promoted_count = _p2_ai_result or 0
+            _p2_ai_result = {"promoted": promoted_count}
     except Exception as e:
         logger.error(f"AI review failed: {e}")
         run_state["errors"].append(f"Phase 2 AI review: {e}")
@@ -507,10 +539,13 @@ def run():
         sys.exit(1)
 
     # Apply promoted changes only if AI actually promoted something
+    _p2_fix_applied = 0
     if promoted_count and promoted_count > 0:
         logger.info(f"Phase 2: Auto-fix {promoted_count} promoted changes")
         try:
-            cmd_fix(auto_mode=True, confidence_threshold=0.90, dry_run=dry_run)
+            p2_fix_result = cmd_fix(auto_mode=True, confidence_threshold=0.90, dry_run=dry_run)
+            if p2_fix_result:
+                _p2_fix_applied = p2_fix_result.get("success", 0)
         except Exception as e:
             logger.error(f"Promoted fix failed: {e}")
             run_state["errors"].append(f"Phase 2 fix: {e}")
@@ -520,15 +555,25 @@ def run():
         logger.info("Phase 2: No promoted changes, skipping fix")
 
     run_state["phases_completed"].append("phase2")
+    run_state["phases"]["phase2"] = {
+        "elapsed_s": int((datetime.now() - _p2_start).total_seconds()),
+        "promoted": _p2_ai_result.get("promoted", 0) if _p2_ai_result else 0,
+        "demoted": _p2_ai_result.get("demoted", 0) if _p2_ai_result else 0,
+        "ai_cost_usd": _p2_ai_result.get("ai_cost_usd", 0.0) if _p2_ai_result else 0.0,
+        "ai_tokens": _p2_ai_result.get("ai_tokens", 0) if _p2_ai_result else 0,
+        "fix_changes_applied": _p2_fix_applied,
+    }
 
     # ── Phase 3 (optional): Activity Tagging ────────────────────────
     enable_activity = os.getenv("ENABLE_ACTIVITY_TAGGING", "").lower() in ("1", "true", "yes")
     if enable_activity:
         logger.info("Phase 3: Activity Tagging")
+        _p3_start = datetime.now()
         try:
             from main import cmd_tag_activity
             cmd_tag_activity(dry_run=dry_run)
             run_state["phases_completed"].append("phase3")
+            run_state["phases"]["phase3"] = {"elapsed_s": int((datetime.now() - _p3_start).total_seconds())}
         except Exception as e:
             logger.error(f"Activity tagging failed (non-fatal): {e}")
             run_state["errors"].append(f"Phase 3: {e}")
@@ -540,10 +585,12 @@ def run():
     enable_followup = os.getenv("ENABLE_FOLLOWUP_SCORING", "").lower() in ("1", "true", "yes")
     if enable_followup:
         logger.info("Phase 4: FollowUp Scoring")
+        _p4_start = datetime.now()
         try:
             from main import cmd_followup
             cmd_followup(skip_scan=True, dry_run=dry_run, no_prompts=False)
             run_state["phases_completed"].append("phase4")
+            run_state["phases"]["phase4"] = {"elapsed_s": int((datetime.now() - _p4_start).total_seconds())}
         except Exception as e:
             logger.error(f"FollowUp scoring failed (non-fatal): {e}")
             run_state["errors"].append(f"Phase 4: {e}")
@@ -643,6 +690,9 @@ def _record_pipeline_run(run_state: dict, start: datetime):
             "phases_completed": run_state.get("phases_completed", []),
             "queue_size": run_state.get("queue_size", 0),
             "errors": run_state.get("errors", []),
+            "changes_applied": run_state.get("changes_applied", 0),
+            "changes_failed": run_state.get("changes_failed", 0),
+            "phases": run_state.get("phases", {}),
         }
 
         runs_path = DATA_DIR / "pipeline_runs.json"

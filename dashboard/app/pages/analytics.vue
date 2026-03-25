@@ -101,7 +101,7 @@ function formatDate(iso: string): string {
         <p class="text-xs uppercase tracking-wider text-neutral-500 mb-4">
           Changes by Field
         </p>
-        <FieldChart :data="data?.byField ?? {}" />
+        <FieldChart :data="data?.byField ?? {}" :detail="data?.byFieldDetail" />
       </div>
 
       <!-- Confidence Distribution -->

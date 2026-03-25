@@ -194,8 +194,14 @@ export interface ContactSummary {
   lastChanged: string
 }
 
+export interface FieldDrillDown {
+  count: number
+  reasons: Array<{ text: string; count: number }>
+}
+
 export interface AnalyticsResponse {
   byField: Record<string, number>
+  byFieldDetail: Record<string, FieldDrillDown>
   byConfidence: { high: number; medium: number; low: number }
   successRate: number
   totalChanges: number
@@ -299,6 +305,16 @@ export interface FollowUpResponse {
 }
 
 // --- Config ---
+
+export interface PipelineConfig {
+  batchSize?: number
+  confidenceHigh?: number
+  confidenceMedium?: number
+  aiCostLimit?: number
+  autoMaxChanges?: number
+  autoThreshold?: number
+  updatedAt?: string
+}
 
 export interface ConfigResponse {
   batchSize: number

@@ -79,6 +79,37 @@ AI_COST_LIMIT_PER_SESSION = 3.00       # USD safety cap per run ($3/day max)
 AUTO_CONFIDENCE_THRESHOLD = 0.90       # Min confidence for auto-apply
 AUTO_MAX_CHANGES_PER_RUN = 200         # Safety limit for auto-mode
 
+# ── Dashboard Config Overrides ────────────────────────────────────────
+def load_pipeline_config_overrides():
+    """Load config overrides from GCS (written by dashboard Config page)."""
+    global BATCH_SIZE, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM
+    global AI_COST_LIMIT_PER_SESSION, AUTO_CONFIDENCE_THRESHOLD, AUTO_MAX_CHANGES_PER_RUN
+
+    config_path = DATA_DIR / "pipeline_config.json"
+    if not config_path.exists():
+        return
+
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            overrides = json.load(f)
+
+        if "batchSize" in overrides:
+            BATCH_SIZE = int(overrides["batchSize"])
+        if "confidenceHigh" in overrides:
+            CONFIDENCE_HIGH = float(overrides["confidenceHigh"])
+        if "confidenceMedium" in overrides:
+            CONFIDENCE_MEDIUM = float(overrides["confidenceMedium"])
+        if "aiCostLimit" in overrides:
+            AI_COST_LIMIT_PER_SESSION = float(overrides["aiCostLimit"])
+        if "autoThreshold" in overrides:
+            AUTO_CONFIDENCE_THRESHOLD = float(overrides["autoThreshold"])
+        if "autoMaxChanges" in overrides:
+            AUTO_MAX_CHANGES_PER_RUN = int(overrides["autoMaxChanges"])
+
+        _logger.info("Loaded pipeline config overrides from %s", config_path)
+    except Exception as e:
+        _logger.warning("Failed to load pipeline config overrides (using defaults): %s", e)
+
 # ── AI Review (Phase 2) ──────────────────────────────────────────────
 AI_REVIEW_CHECKPOINT = DATA_DIR / "ai_review_checkpoint.json"
 AI_REVIEW_HISTORY = DATA_DIR / "ai_review_history.json"
