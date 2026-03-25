@@ -13,6 +13,7 @@ import type {
   FollowUpScoresFile,
   LinkedInSignal,
   LinkedInSignalsFile,
+  PipelineConfig,
 } from './types'
 
 let storage: Storage | null = null
@@ -421,8 +422,6 @@ export async function getContactNameMap(): Promise<Map<string, string>> {
 }
 
 // --- Pipeline Config ---
-
-import type { PipelineConfig } from './types'
 
 export async function getPipelineConfig(): Promise<PipelineConfig | null> {
   return readJson<PipelineConfig>('data/pipeline_config.json')

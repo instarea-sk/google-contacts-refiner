@@ -545,7 +545,7 @@ def run():
 
     # Apply promoted changes only if AI actually promoted something
     _p2_fix_applied = 0
-    if promoted_count and promoted_count > 0:
+    if promoted_count > 0:
         logger.info(f"Phase 2: Auto-fix {promoted_count} promoted changes")
         try:
             p2_fix_result = cmd_fix(auto_mode=True, confidence_threshold=0.90, dry_run=dry_run)

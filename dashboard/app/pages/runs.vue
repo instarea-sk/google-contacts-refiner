@@ -115,7 +115,7 @@ function phaseStats(phase: string, detail: PhaseDetail): string {
           <template v-for="(run, i) in data" :key="i">
             <tr
               class="border-b border-neutral-800/50 transition-colors"
-              :class="run.phases ? 'cursor-pointer hover:bg-neutral-800/30' : 'hover:bg-neutral-800/30'"
+              :class="[run.phases ? 'cursor-pointer' : '', 'hover:bg-neutral-800/30']"
               @click="run.phases && toggleRow(i)"
             >
               <td class="px-4 py-2.5 text-neutral-600">
